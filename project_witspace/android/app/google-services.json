@@ -1,0 +1,67 @@
+{
+  "project_info": {
+    "project_number": "744752433120",
+    "project_id": "wit-space",
+    "storage_bucket": "wit-space.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:744752433120:android:f4aabd8c0f6c95a98a0d85",
+        "android_client_info": {
+          "package_name": "com.example.events_app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCnQSWlslCk_WU3PvutFugGIek5bDPnkIA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:744752433120:android:68778503844e41418a0d85",
+        "android_client_info": {
+          "package_name": "com.example.project_witspace"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCnQSWlslCk_WU3PvutFugGIek5bDPnkIA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:744752433120:android:deff17c5771840288a0d85",
+        "android_client_info": {
+          "package_name": "com.example.wit_space_project"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCnQSWlslCk_WU3PvutFugGIek5bDPnkIA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
