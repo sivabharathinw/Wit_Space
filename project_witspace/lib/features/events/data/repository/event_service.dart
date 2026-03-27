@@ -4,14 +4,11 @@ import '../model/event_model.dart';
 import '../model/registration_model.dart';
 import '../model/serializers.dart';
 
-final eventRepositoryProvider = Provider<EventRepository>((ref) {
-  return EventRepository(FirebaseFirestore.instance);
-});
 
-class EventRepository {
+class EventService {
   final FirebaseFirestore _firestore;
 
-  EventRepository(this._firestore);
+  EventService(this._firestore);
 
   // Read all events
   Stream<List<EventModel>> getEventsStream() {
@@ -23,8 +20,19 @@ class EventRepository {
       return snapshot.docs.map((doc) {
         final data = doc.data();
         data['id'] = doc.id;
-        final event = serializers.deserializeWith(EventModel.serializer, data);
-        return event;
+        // Add default values for missing fields
+        data['createdBy'] = data['createdBy'] ?? 'Unknown';
+        data['createdAt'] = data['createdAt'] ?? DateTime.now();
+        final rawImageUrl = data['imageUrl'] as String? ?? '';
+        data['imageUrl'] = (rawImageUrl.startsWith('http') && rawImageUrl.length > 10) ? rawImageUrl : '';
+        data['time'] = data['time'] ?? '00:00';
+
+        try {
+          return EventModel.fromJson(data);
+        } catch (e) {
+          print('Error deserializing event: $e');
+          return null;
+        }
       }).where((e) => e != null).cast<EventModel>().toList();
     });
   }
@@ -35,20 +43,27 @@ class EventRepository {
       if (!doc.exists) throw Exception('Event not found');
       final data = doc.data()!;
       data['id'] = doc.id;
-      return serializers.deserializeWith(EventModel.serializer, data)!;
+      // Add default values for missing fields
+      data['createdBy'] = data['createdBy'] ?? 'Unknown';
+      data['createdAt'] = data['createdAt'] ?? DateTime.now();
+      final rawImageUrl = data['imageUrl'] as String? ?? '';
+      data['imageUrl'] = (rawImageUrl.startsWith('http') && rawImageUrl.length > 10) ? rawImageUrl : '';
+      data['time'] = data['time'] ?? '00:00';
+
+      return EventModel.fromJson(data)!;
     });
   }
 
   // Create event
   Future<void> createEvent(EventModel event) async {
-    final data = serializers.serializeWith(EventModel.serializer, event) as Map<String, dynamic>;
-    data.remove('id'); // Firestore auto-generates doc ID or we use a separate doc ID logic
+    final data = event.toJson();
+    data.remove('id');
     await _firestore.collection('events').add(data);
   }
 
   // Update event
   Future<void> updateEvent(EventModel event) async {
-    final data = serializers.serializeWith(EventModel.serializer, event) as Map<String, dynamic>;
+    final data = event.toJson();
     data.remove('id');
     await _firestore.collection('events').doc(event.id).update(data);
   }
@@ -60,7 +75,8 @@ class EventRepository {
 
   // Register for event
   Future<String> registerForEvent(RegistrationModel registration) async {
-    final data = serializers.serializeWith(RegistrationModel.serializer, registration) as Map<String, dynamic>;
+    final data = registration.toJson();
+
     data.remove('id');
     final docRef = await _firestore
         .collection('events')
@@ -70,3 +86,4 @@ class EventRepository {
     return docRef.id;
   }
 }
+

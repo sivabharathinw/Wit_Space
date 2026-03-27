@@ -9,7 +9,12 @@ part of 'serializers.dart';
 Serializers _$serializers =
     (Serializers().toBuilder()
           ..add(EventModel.serializer)
-          ..add(RegistrationModel.serializer))
+          ..add(EventState.serializer)
+          ..add(RegistrationModel.serializer)
+          ..addBuilderFactory(
+            const FullType(BuiltList, const [const FullType(EventModel)]),
+            () => ListBuilder<EventModel>(),
+          ))
         .build();
 
 // ignore_for_file: deprecated_member_use_from_same_package,type=lint

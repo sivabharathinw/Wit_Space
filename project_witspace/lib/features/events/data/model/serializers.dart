@@ -3,19 +3,23 @@ library serializers;
 import 'package:built_value/built_value.dart';
 import 'package:built_value/serializer.dart';
 import 'package:built_value/standard_json_plugin.dart';
+import 'package:built_collection/built_collection.dart';
 import 'package:flutter/material.dart';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'event_model.dart';
 import 'registration_model.dart';
+import 'event_state.dart';
 
 part 'serializers.g.dart';
 
 @SerializersFor([
   EventModel,
   RegistrationModel,
+  EventState,
 ])
 final Serializers serializers = (_$serializers.toBuilder()
+//custom serializer for timestap from firebase
       ..add(const TimeOfDaySerializer())
       ..add(const FirestoreTimestampSerializer())
       ..addPlugin(StandardJsonPlugin()))
@@ -25,13 +29,17 @@ class FirestoreTimestampSerializer implements PrimitiveSerializer<DateTime> {
   const FirestoreTimestampSerializer();
 
   @override
+  //DateTime have date and time together
   DateTime deserialize(Serializers serializers, Object serialized, {FullType specifiedType = FullType.unspecified}) {
+    //if the incoming date is timestamp then convert it to date time
     if (serialized is Timestamp) {
       return serialized.toDate();
     }
+    //if the incoming data is int then convert it to date time
     if (serialized is int) {
       return DateTime.fromMicrosecondsSinceEpoch(serialized);
     }
+    //otherwise return the incoming date time
     return DateTime.parse(serialized as String);
   }
 
@@ -46,7 +54,7 @@ class FirestoreTimestampSerializer implements PrimitiveSerializer<DateTime> {
   @override
   Iterable<Type> get types => [DateTime];
 }
-
+//primitiveSerilizer a a serilizer of single date time type
 class TimeOfDaySerializer implements PrimitiveSerializer<TimeOfDay> {
   const TimeOfDaySerializer();
 

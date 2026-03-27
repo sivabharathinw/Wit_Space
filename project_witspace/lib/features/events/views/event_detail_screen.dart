@@ -8,8 +8,9 @@ import '../../../src/components/app_icon.dart';
 import '../../../src/components/app_badge.dart';
 import '../../../src/tokens/spacing.dart';
 import '../../../src/widgets/extensions.dart';
-import '../viewmodel/event_detail_viewmodel.dart';
+import '../viewmodel/event_viewmodel.dart';
 import '../data/model/event_model.dart';
+import 'event_ref_extensions.dart';
 
 class EventDetailScreen extends ConsumerWidget {
   final String eventId;
@@ -18,8 +19,11 @@ class EventDetailScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final eventAsync = ref.watch(eventDetailProvider(eventId));
+    final eventState = ref.eventState;
+    final event = eventState.events.where((e) => e.id == eventId).firstOrNull;
     final colors = context.colors;
+    
+    final bool isNotFound = event == null;
     
     // Ownership check (Mocked for now)
     const bool isOwner = true;
@@ -54,7 +58,7 @@ class EventDetailScreen extends ConsumerWidget {
                 );
 
                 if (confirm == true) {
-                  await ref.read(eventDetailViewModelProvider).deleteEvent(eventId);
+                  await ref.eventNotifier.deleteEvent(eventId);
                   if (context.mounted) {
                     context.goNamed('eventList');
                   }
@@ -64,35 +68,45 @@ class EventDetailScreen extends ConsumerWidget {
           ]
         ],
       ),
-      body: eventAsync.when(
-        data: (event) => _buildBody(context, ref, event),
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (error, stack) => Center(child: AppText.bodyMd('Error: $error', color: colors.error)),
-      ),
+      body: eventState.isLoading && eventState.events.isEmpty
+          ? const Center(child: CircularProgressIndicator())
+          : isNotFound
+              ? Center(child: AppText.bodyMd('Event not found', color: colors.error))
+              : EventDetailBody(event: event!),
     );
   }
+}
 
-  Widget _buildBody(BuildContext context, WidgetRef ref, EventModel event) {
+class EventDetailBody extends StatelessWidget {
+  final EventModel event;
+
+  const EventDetailBody({
+    super.key,
+    required this.event,
+  });
+
+  @override
+  Widget build(BuildContext context) {
     final colors = context.colors;
 
     return SingleChildScrollView(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          if (event.imageUrl.isNotEmpty)
+          if (event.imageUrl.isNotEmpty && event.imageUrl.startsWith('http'))
             Image.network(
               event.imageUrl,
-              height: 250,
+              height: 300,
               fit: BoxFit.cover,
               errorBuilder: (context, error, stackTrace) => Container(
-                height: 250,
+                height: 300,
                 color: colors.border.withOpacity(0.5),
                 child: AppIcon(AppIconName.grid, size: 100, color: colors.textMuted),
               ),
             )
           else
             Container(
-              height: 250,
+              height: 300,
               color: colors.primary.withOpacity(0.05),
               child: AppIcon(AppIconName.calendar, size: 100, color: colors.primary.withOpacity(0.2)),
             ),
@@ -109,12 +123,24 @@ class EventDetailScreen extends ConsumerWidget {
                   ],
                 ),
                 const SizedBox(height: AppSpacing.s6),
-                _buildInfoCard(context, [
-                  _buildInfoRow(AppIconName.calendar, 'Date', event.date.toIso8601String().split('T')[0]),
+                EventInfoCard(children: [
+                  EventInfoRow(
+                    icon: AppIconName.calendar,
+                    label: 'Date',
+                    value: event.date.toIso8601String().split('T')[0],
+                  ),
                   const Divider(height: AppSpacing.s6),
-                  _buildInfoRow(AppIconName.clock, 'Time', event.time.format(context)),
+                  EventInfoRow(
+                    icon: AppIconName.clock,
+                    label: 'Time',
+                    value: event.time.format(context),
+                  ),
                   const Divider(height: AppSpacing.s6),
-                  _buildInfoRow(AppIconName.mapPin, 'Location', event.location),
+                  EventInfoRow(
+                    icon: AppIconName.mapPin,
+                    label: 'Location',
+                    value: event.location,
+                  ),
                 ]),
                 const SizedBox(height: AppSpacing.s8),
                 AppText.sectionLabel('DESCRIPTION', color: colors.primary.withOpacity(0.5)),
@@ -123,7 +149,8 @@ class EventDetailScreen extends ConsumerWidget {
                 const SizedBox(height: AppSpacing.s10),
                 AppButton.primary(
                   label: 'Register for Event',
-                  onPressed: () => context.goNamed('registration', pathParameters: {'eventId': event.id}),
+                  onPressed: () => context.goNamed('registration',
+                      pathParameters: {'eventId': event.id}),
                   fullWidth: true,
                   size: AppButtonSize.lg,
                   leading: const AppIcon(AppIconName.check, color: Colors.white),
@@ -136,8 +163,18 @@ class EventDetailScreen extends ConsumerWidget {
       ),
     );
   }
+}
 
-  Widget _buildInfoCard(BuildContext context, List<Widget> children) {
+class EventInfoCard extends StatelessWidget {
+  final List<Widget> children;
+
+  const EventInfoCard({
+    super.key,
+    required this.children,
+  });
+
+  @override
+  Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.all(AppSpacing.s4),
       decoration: BoxDecoration(
@@ -148,30 +185,42 @@ class EventDetailScreen extends ConsumerWidget {
       child: Column(children: children),
     );
   }
+}
 
-  Widget _buildInfoRow(AppIconName icon, String label, String value) {
-    return Builder(builder: (context) {
-      final colors = context.colors;
-      return Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(AppSpacing.s2),
-            decoration: BoxDecoration(
-              color: colors.primary.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: AppIcon(icon, size: 18, color: colors.primary),
+class EventInfoRow extends StatelessWidget {
+  final AppIconName icon;
+  final String label;
+  final String value;
+
+  const EventInfoRow({
+    super.key,
+    required this.icon,
+    required this.label,
+    required this.value,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    return Row(
+      children: [
+        Container(
+          padding: const EdgeInsets.all(AppSpacing.s2),
+          decoration: BoxDecoration(
+            color: colors.primary.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(8),
           ),
-          const SizedBox(width: AppSpacing.s3),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              AppText.labelSm(label, color: colors.textMuted),
-              AppText.bodyMd(value, color: colors.textPrimary),
-            ],
-          ),
-        ],
-      );
-    });
+          child: AppIcon(icon, size: 18, color: colors.primary),
+        ),
+        const SizedBox(width: AppSpacing.s3),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            AppText.labelSm(label, color: colors.textMuted),
+            AppText.bodyMd(value, color: colors.textPrimary),
+          ],
+        ),
+      ],
+    );
   }
 }
