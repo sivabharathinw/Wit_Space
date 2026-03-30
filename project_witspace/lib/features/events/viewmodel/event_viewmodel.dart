@@ -16,6 +16,7 @@ final eventNotifierProvider = StateNotifierProvider<EventNotifier, EventState>((
 
 class EventNotifier extends StateNotifier<EventState> {
   final EventService _repository;
+
   StreamSubscription? _eventsSubscription;
   StreamSubscription? _notificationsSubscription;
   String? _currentUserId;
@@ -30,6 +31,7 @@ class EventNotifier extends StateNotifier<EventState> {
   }
 
   void _loadEvents() {
+    //if eventsub is not null cancel it.means if already listening to events then cancel it.
     _eventsSubscription?.cancel();
     _eventsSubscription = _repository.getEventsStream().listen((events) {
       _updateState(events: events);
@@ -62,6 +64,7 @@ class EventNotifier extends StateNotifier<EventState> {
     bool? isLoading,
     String? error,
     String? registrationId,
+    bool? isRegistered,
   }) {
     state = state.rebuild((b) {
       if (events != null) b.events = ListBuilder(events);
@@ -69,109 +72,83 @@ class EventNotifier extends StateNotifier<EventState> {
       if (isLoading != null) b.isLoading = isLoading;
       if (error != null) b.error = error;
       if (registrationId != null) b.registrationId = registrationId;
+      if (isRegistered != null) b.isRegistered = isRegistered;
     });
   }
 
   Future<void> createEvent(EventModel event) async {
     _updateState(isLoading: true, error: null);
-    try {
-      await _repository.createEvent(event);
-      if (_currentUserId != null) {
-        await _repository.addNotification(
-          senderId: 'system',
-          receiverId: _currentUserId!,
-          title: 'New Event Created',
-          message: 'Your event "${event.title}" has been successfully created.',
-        );
-      }
-      _updateState(isLoading: false);
-    } catch (e) {
-      _updateState(isLoading: false, error: e.toString());
+    await _repository.createEvent(event);
+    if (_currentUserId != null) {
+      await _repository.addNotification(
+        senderId: 'system',
+        receiverId: _currentUserId!,
+        title: 'New Event Created',
+        message: 'Your event "${event.title}" has been successfully created.',
+      );
     }
+    _updateState(isLoading: false);
   }
 
   Future<void> updateEvent(EventModel event) async {
     _updateState(isLoading: true, error: null);
-    try {
-      await _repository.updateEvent(event);
-      _updateState(isLoading: false);
-    } catch (e) {
-      _updateState(isLoading: false, error: e.toString());
-    }
+    await _repository.updateEvent(event);
+    _updateState(isLoading: false);
   }
 
   Future<void> deleteEvent(String eventId) async {
     _updateState(isLoading: true, error: null);
-    try {
-      await _repository.deleteEvent(eventId);
-      _updateState(isLoading: false);
-    } catch (e) {
-      _updateState(isLoading: false, error: e.toString());
-    }
+    await _repository.deleteEvent(eventId);
+    _updateState(isLoading: false);
   }
 
   Future<void> register(RegistrationModel registration) async {
     _updateState(isLoading: true, error: null, registrationId: null);
-    try {
-      final id = await _repository.registerForEvent(registration);
-      if (_currentUserId != null) {
-        await _repository.addNotification(
-          senderId: 'system',
-          receiverId: _currentUserId!,
-          title: 'Registration Successful',
-          message: 'You have been registered for the event.',
-        );
-      }
-      _updateState(isLoading: false, registrationId: id);
-    } catch (e) {
-      _updateState(isLoading: false, error: e.toString());
+    final id = await _repository.registerForEvent(registration);//this method returns the registration id
+    if (_currentUserId != null) {
+      await _repository.addNotification(
+        senderId: 'system',
+        receiverId: _currentUserId!,
+        title: 'Registration Successful',
+        message: 'You have been registered for the event.',
+      );
     }
+    _updateState(isLoading: false, registrationId: id, isRegistered: true);
   }
 
+  Future<void> checkRegistrationStatus(String eventId) async {
+    if (_currentUserId == null) return;
+    _updateState(isRegistered: false); // Reset before checking
+    final registration = await _repository.getUserRegistrationForEvent(eventId, _currentUserId!);
+    //if user registerd already it returns the registration else null
+//with this we upadate teh isregisterd is tru or fls
+    _updateState(isRegistered: registration != null);
+  }
+//void resetStatus is used to reset the isregistered to false
   void resetStatus() {
     _updateState(isLoading: false, error: null, registrationId: null);
   }
 
   Future<void> markAsRead(String notificationId) async {
-    try {
-      await _repository.markAsRead(notificationId);
-    } catch (e) {
-      _updateState(error: e.toString());
-    }
+    await _repository.markAsRead(notificationId);
   }
 
   Future<void> markAllAsRead() async {
     if (_currentUserId == null) return;
-    try {
-      await _repository.markAllAsRead(_currentUserId!);
-    } catch (e) {
-      _updateState(error: e.toString());
-    }
+    await _repository.markAllAsRead(_currentUserId!);
   }
 
   Future<void> deleteNotification(String notificationId) async {
-    try {
-      await _repository.deleteNotification(notificationId);
-    } catch (e) {
-      _updateState(error: e.toString());
-    }
+    await _repository.deleteNotification(notificationId);
   }
 
   Future<void> updateNotification(NotificationModel notification) async {
-    try {
-      await _repository.updateNotification(notification);
-    } catch (e) {
-      _updateState(error: e.toString());
-    }
+    await _repository.updateNotification(notification);
   }
 
   Future<void> deleteAllNotifications() async {
     if (_currentUserId == null) return;
-    try {
-      await _repository.deleteAllNotifications(_currentUserId!);
-    } catch (e) {
-      _updateState(error: e.toString());
-    }
+    await _repository.deleteAllNotifications(_currentUserId!);
   }
 
   @override

@@ -19,6 +19,8 @@ abstract class EventState implements Built<EventState, EventStateBuilder> {
   String? get error;
 
   String? get registrationId;
+  
+  bool get isRegistered;
 
   int get unreadNotificationsCount => notifications.where((n) => !n.hasSeen).length;
 
@@ -36,5 +38,6 @@ abstract class EventState implements Built<EventState, EventStateBuilder> {
         ..isLoading = false
         ..error = null
         ..registrationId = null
+        ..isRegistered = false
       );
 }

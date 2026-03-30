@@ -40,6 +40,11 @@ class _$EventStateSerializer implements StructuredSerializer<EventState> {
         object.isLoading,
         specifiedType: const FullType(bool),
       ),
+      'isRegistered',
+      serializers.serialize(
+        object.isRegistered,
+        specifiedType: const FullType(bool),
+      ),
     ];
     Object? value;
     value = object.error;
@@ -121,6 +126,14 @@ class _$EventStateSerializer implements StructuredSerializer<EventState> {
                   )
                   as String?;
           break;
+        case 'isRegistered':
+          result.isRegistered =
+              serializers.deserialize(
+                    value,
+                    specifiedType: const FullType(bool),
+                  )!
+                  as bool;
+          break;
       }
     }
 
@@ -139,6 +152,8 @@ class _$EventState extends EventState {
   final String? error;
   @override
   final String? registrationId;
+  @override
+  final bool isRegistered;
 
   factory _$EventState([void Function(EventStateBuilder)? updates]) =>
       (EventStateBuilder()..update(updates))._build();
@@ -149,6 +164,7 @@ class _$EventState extends EventState {
     required this.isLoading,
     this.error,
     this.registrationId,
+    required this.isRegistered,
   }) : super._();
   @override
   EventState rebuild(void Function(EventStateBuilder) updates) =>
@@ -165,7 +181,8 @@ class _$EventState extends EventState {
         notifications == other.notifications &&
         isLoading == other.isLoading &&
         error == other.error &&
-        registrationId == other.registrationId;
+        registrationId == other.registrationId &&
+        isRegistered == other.isRegistered;
   }
 
   @override
@@ -176,6 +193,7 @@ class _$EventState extends EventState {
     _$hash = $jc(_$hash, isLoading.hashCode);
     _$hash = $jc(_$hash, error.hashCode);
     _$hash = $jc(_$hash, registrationId.hashCode);
+    _$hash = $jc(_$hash, isRegistered.hashCode);
     _$hash = $jf(_$hash);
     return _$hash;
   }
@@ -187,7 +205,8 @@ class _$EventState extends EventState {
           ..add('notifications', notifications)
           ..add('isLoading', isLoading)
           ..add('error', error)
-          ..add('registrationId', registrationId))
+          ..add('registrationId', registrationId)
+          ..add('isRegistered', isRegistered))
         .toString();
   }
 }
@@ -219,6 +238,10 @@ class EventStateBuilder implements Builder<EventState, EventStateBuilder> {
   set registrationId(String? registrationId) =>
       _$this._registrationId = registrationId;
 
+  bool? _isRegistered;
+  bool? get isRegistered => _$this._isRegistered;
+  set isRegistered(bool? isRegistered) => _$this._isRegistered = isRegistered;
+
   EventStateBuilder();
 
   EventStateBuilder get _$this {
@@ -229,6 +252,7 @@ class EventStateBuilder implements Builder<EventState, EventStateBuilder> {
       _isLoading = $v.isLoading;
       _error = $v.error;
       _registrationId = $v.registrationId;
+      _isRegistered = $v.isRegistered;
       _$v = null;
     }
     return this;
@@ -262,6 +286,11 @@ class EventStateBuilder implements Builder<EventState, EventStateBuilder> {
             ),
             error: error,
             registrationId: registrationId,
+            isRegistered: BuiltValueNullFieldError.checkNotNull(
+              isRegistered,
+              r'EventState',
+              'isRegistered',
+            ),
           );
     } catch (_) {
       late String _$failedField;

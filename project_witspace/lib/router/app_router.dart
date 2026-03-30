@@ -23,7 +23,9 @@ final appRouter = GoRouter(
           path: ':notificationId',
           name: 'notificationDetails',
           builder: (context, state) {
+            //state .extra means data passing while routing,as notification model means conveert into notification model
             final notification = state.extra as NotificationModel;
+            //goes to the notification details screen
             return NotificationDetailsScreen(notification: notification);
           },
         ),

@@ -20,10 +20,36 @@ class _NotificationScreenState extends ConsumerState<NotificationScreen> {
   @override
   void initState() {
     super.initState();
-    // Simulate getting user ID (mock for now)
     Future.microtask(() {
       ref.read(eventNotifierProvider.notifier).setUserId('temp_user_id');
     });
+  }
+
+  void _confirmDeleteAll(BuildContext context, WidgetRef ref) {
+    showDialog(
+      context: context,
+      builder: (context) =>
+          AlertDialog(
+            title: const Text('Clear All Notifications?'),
+            content: const Text('This action cannot be undone.'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Cancel'),
+              ),
+              TextButton(
+                onPressed: () {
+                  ref
+                      .read(eventNotifierProvider.notifier)
+                      .deleteAllNotifications();
+                  Navigator.pop(context);
+                },
+                child: const Text(
+                    'Clear All', style: TextStyle(color: Colors.red)),
+              ),
+            ],
+          ),
+    );
   }
 
   @override
@@ -40,7 +66,8 @@ class _NotificationScreenState extends ConsumerState<NotificationScreen> {
         actions: [
           if (state.notifications.any((n) => !n.hasSeen))
             TextButton.icon(
-              onPressed: () => ref.read(eventNotifierProvider.notifier).markAllAsRead(),
+              onPressed: () =>
+                  ref.read(eventNotifierProvider.notifier).markAllAsRead(),
               icon: AppIcon(AppIconName.check, color: colors.primary, size: 18),
               label: AppText.label('Mark all as read', color: colors.primary),
             ),
@@ -55,55 +82,35 @@ class _NotificationScreenState extends ConsumerState<NotificationScreen> {
       body: state.isLoading && state.notifications.isEmpty
           ? const Center(child: CircularProgressIndicator())
           : state.notifications.isEmpty
-              ? _EmptyNotifications()
-              : ListView.separated(
-                  padding: const EdgeInsets.all(AppSpacing.s6),
-                  itemCount: state.notifications.length,
-                  separatorBuilder: (context, index) => const SizedBox(height: AppSpacing.s4),
-                  itemBuilder: (context, index) {
-                    final notification = state.notifications[index];
-                    return NotificationTile(
-                      notification: notification,
-                      onOpen: () {
-                        if (!notification.hasSeen) {
-                          ref.read(eventNotifierProvider.notifier).markAsRead(notification.id);
-                        }
-                        context.pushNamed(
-                          'notificationDetails',
-                          pathParameters: {'notificationId': notification.id},
-                          extra: notification,
-                        );
-                      },
-                    );
-                  },
-                ),
-    );
-  }
-
-  void _confirmDeleteAll(BuildContext context, WidgetRef ref) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Clear All Notifications?'),
-        content: const Text('This action cannot be undone.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () {
-              ref.read(eventNotifierProvider.notifier).deleteAllNotifications();
-              Navigator.pop(context);
+          ? _EmptyNotifications()
+          : ListView.separated(
+        padding: const EdgeInsets.all(AppSpacing.s6),
+        itemCount: state.notifications.length,
+        separatorBuilder: (context, index) =>
+        const SizedBox(height: AppSpacing.s4),
+        itemBuilder: (context, index) {
+          final notification = state.notifications[index];
+          return NotificationTile(
+            notification: notification,
+            onOpen: () {
+              if (!notification.hasSeen) {
+                ref.read(eventNotifierProvider.notifier).markAsRead(
+                    notification.id);
+              }
+              context.pushNamed(
+                'notificationDetails',
+                pathParameters: {'notificationId': notification.id},
+                extra: notification,
+              );
             },
-            child: const Text('Clear All', style: TextStyle(color: Colors.red)),
-          ),
-        ],
+          );
+        },
       ),
     );
   }
-}
 
+
+}
 class _EmptyNotifications extends StatelessWidget {
   @override
   Widget build(BuildContext context) {

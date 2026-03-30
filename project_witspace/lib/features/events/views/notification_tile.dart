@@ -18,6 +18,19 @@ class NotificationTile extends ConsumerWidget {
     required this.notification,
     required this.onOpen,
   });
+  String _formatDate(DateTime date) {
+    final now = DateTime.now();
+    final difference = now.difference(date);
+
+    if (difference.inMinutes < 60) {
+      return '${difference.inMinutes}m ago';
+    } else if (difference.inHours < 24) {
+      return '${difference.inHours}h ago';
+    } else {
+      return '${date.day}/${date.month}';
+    }
+  }
+
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -34,9 +47,9 @@ class NotificationTile extends ConsumerWidget {
           Container(
             padding: const EdgeInsets.all(AppSpacing.s2),
             decoration: BoxDecoration(
-              color: notification.hasSeen 
-                ? colors.textMuted.withAlpha((0.1 * 255).toInt()) 
-                : colors.primary.withAlpha((0.1 * 255).toInt()),
+              color: notification.hasSeen
+                  ? colors.textMuted.withOpacity(0.1)
+                  : colors.primary.withOpacity(0.1),
               shape: BoxShape.circle,
             ),
             child: AppIcon(
@@ -62,11 +75,6 @@ class NotificationTile extends ConsumerWidget {
                     AppText.labelSm(
                       _formatDate(notification.createdAt),
                       color: colors.textMuted,
-                    ),
-                    IconButton(
-                      onPressed: () => _showEditDialog(context, ref),
-                      icon: AppIcon(AppIconName.edit, color: colors.primary, size: 18),
-                      tooltip: 'Edit',
                     ),
                     IconButton(
                       onPressed: () => ref.read(eventNotifierProvider.notifier).deleteNotification(notification.id),
@@ -110,60 +118,6 @@ class NotificationTile extends ConsumerWidget {
     );
   }
 
-  void _showEditDialog(BuildContext context, WidgetRef ref) {
-    final titleController = TextEditingController(text: notification.title);
-    final messageController = TextEditingController(text: notification.message);
 
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Edit Notification'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: titleController,
-              decoration: const InputDecoration(labelText: 'Title'),
-            ),
-            const SizedBox(height: AppSpacing.s4),
-            TextField(
-              controller: messageController,
-              decoration: const InputDecoration(labelText: 'Message'),
-              maxLines: 3,
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () {
-              final updated = notification.rebuild((b) => b
-                ..title = titleController.text
-                ..message = messageController.text
-              );
-              ref.read(eventNotifierProvider.notifier).updateNotification(updated);
-              Navigator.pop(context);
-            },
-            child: const Text('Save'),
-          ),
-        ],
-      ),
-    );
-  }
 
-  String _formatDate(DateTime date) {
-    final now = DateTime.now();
-    final difference = now.difference(date);
-
-    if (difference.inMinutes < 60) {
-      return '${difference.inMinutes}m ago';
-    } else if (difference.inHours < 24) {
-      return '${difference.inHours}h ago';
-    } else {
-      return '${date.day}/${date.month}';
-    }
-  }
 }

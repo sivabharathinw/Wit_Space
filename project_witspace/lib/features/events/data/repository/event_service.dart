@@ -27,13 +27,8 @@ class EventService {
         data['imageUrl'] = (rawImageUrl.startsWith('http') && rawImageUrl.length > 10) ? rawImageUrl : '';
         data['time'] = data['time'] ?? '00:00';
 
-        try {
-          return EventModel.fromJson(data);
-        } catch (e) {
-          print('Error deserializing event: $e');
-          return null;
-        }
-      }).where((e) => e != null).cast<EventModel>().toList();
+        return EventModel.fromJson(data);
+      }).whereType<EventModel>().toList();
     });
   }
 
@@ -54,26 +49,26 @@ class EventService {
     });
   }
 
-  // Create event
+  // create event
   Future<void> createEvent(EventModel event) async {
     final data = event.toJson();
     data.remove('id');
     await _firestore.collection('events').add(data);
   }
 
-  // Update event
+  // update event
   Future<void> updateEvent(EventModel event) async {
     final data = event.toJson();
     data.remove('id');
     await _firestore.collection('events').doc(event.id).update(data);
   }
 
-  // Delete event
+  // delete event
   Future<void> deleteEvent(String eventId) async {
     await _firestore.collection('events').doc(eventId).delete();
   }
 
-  // Register for event
+  // register for event
   Future<String> registerForEvent(RegistrationModel registration) async {
     final data = registration.toJson();
 
@@ -85,16 +80,17 @@ class EventService {
         .add(data);
     return docRef.id;
   }
-
+//to check if the user register for particular event already 
   Future<RegistrationModel?> getUserRegistrationForEvent(String eventId, String userId) async {
     final snapshot = await _firestore
         .collection('events')
         .doc(eventId)
         .collection('registrations')
         .where('userId', isEqualTo: userId)
+    //get only one result
         .limit(1)
         .get();
-
+//if teh result is empty retruns null else return the first doc
     if (snapshot.docs.isEmpty) return null;
     final doc = snapshot.docs.first;
     final data = doc.data();
@@ -102,7 +98,7 @@ class EventService {
     return RegistrationModel.fromJson(data);
   }
 
-
+// it listens continously and returns a stream of list of registrations
   Stream<List<RegistrationModel>> getUserRegistrationsStream(String userId) {
     return _firestore
         .collectionGroup('registrations')
@@ -112,12 +108,9 @@ class EventService {
       return snapshot.docs.map((doc) {
         final data = doc.data();
         data['id'] = doc.id;
-        try {
-          return RegistrationModel.fromJson(data);
-        } catch (e) {
-          return null;
-        }
-      }).where((r) => r != null).cast<RegistrationModel>().toList();
+        return RegistrationModel.fromJson(data);
+        //wheretype<T> ,means it removes am\nything that is not its type so only reg model datas are presnt
+      }).whereType<RegistrationModel>().toList();
     });
   }
 
@@ -131,19 +124,12 @@ class EventService {
         .map((snapshot) {
       return snapshot.docs.map((doc) {
         final data = doc.data();
+        //manually set the id
         data['id'] = doc.id;
+        data['createdAt'] = data['createdAt'] ?? DateTime.now();
         
-        if (data['createdAt'] is Timestamp) {
-          data['createdAt'] = (data['createdAt'] as Timestamp).toDate().toIso8601String();
-        }
-
-        try {
-          return NotificationModel.fromJson(data);
-        } catch (e) {
-          print('Error deserializing notification: $e');
-          return null;
-        }
-      }).where((n) => n != null).cast<NotificationModel>().toList();
+        return NotificationModel.fromJson(data);
+      }).whereType<NotificationModel>().toList();
     });
   }
 
@@ -157,13 +143,16 @@ class EventService {
     final snapshot = await _firestore
         .collection('notifications')
         .where('receiverId', isEqualTo: userId)
+    //fetch only unread notifications
         .where('hasSeen', isEqualTo: false)
         .get();
-
+//create batch to perform multiple update once
     final batch = _firestore.batch();
     for (var doc in snapshot.docs) {
+      //doc.reference means exact locationn of that documment(like path)
       batch.update(doc.reference, {'hasSeen': true});
     }
+    //commit means perform the batch
     await batch.commit();
   }
 
@@ -172,9 +161,9 @@ class EventService {
   }
 
   Future<void> updateNotification(NotificationModel notification) async {
-    final data = notification.toJson();
-    data.remove('id');
-    await _firestore.collection('notifications').doc(notification.id).update(data);
+    await _firestore.collection('notifications').doc(notification.id).update({
+      'hasSeen': true,
+    });
   }
 
   Future<void> deleteAllNotifications(String userId) async {
@@ -202,6 +191,7 @@ class EventService {
       'title': title,
       'message': message,
       'hasSeen': false,
+      //FieldValue means to tell the firestore to set the current time automatically
       'createdAt': FieldValue.serverTimestamp(),
     });
   }

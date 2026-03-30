@@ -7,20 +7,32 @@ import '../../../src/components/app_button.dart';
 import '../../../src/components/app_icon.dart';
 import '../../../src/components/app_badge.dart';
 import '../../../src/tokens/spacing.dart';
-import '../../../src/widgets/extensions.dart';
 import '../viewmodel/event_viewmodel.dart';
 import '../data/model/event_model.dart';
-import 'event_ref_extensions.dart';
+import '../../../src/widgets/extensions.dart';
 
-class EventDetailScreen extends ConsumerWidget {
+class EventDetailScreen extends ConsumerStatefulWidget {
   final String eventId;
 
   const EventDetailScreen({super.key, required this.eventId});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final eventState = ref.eventState;
-    final event = eventState.events.where((e) => e.id == eventId).firstOrNull;
+  ConsumerState<EventDetailScreen> createState() => _EventDetailScreenState();
+}
+
+class _EventDetailScreenState extends ConsumerState<EventDetailScreen> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(eventNotifierProvider.notifier).checkRegistrationStatus(widget.eventId);
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final eventState = ref.watch(eventNotifierProvider);
+    final event = eventState.events.where((e) => e.id == widget.eventId).firstOrNull;
     final colors = context.colors;
     
     final bool isNotFound = event == null;
@@ -34,10 +46,10 @@ class EventDetailScreen extends ConsumerWidget {
         backgroundColor: colors.bgPage,
         elevation: 0,
         actions: [
-          if (isOwner) ...[
+          if (isOwner && !isNotFound) ...[
             IconButton(
               icon: AppIcon(AppIconName.edit, color: colors.textSecondary),
-              onPressed: () => context.goNamed('editEvent', pathParameters: {'eventId': eventId}),
+              onPressed: () => context.goNamed('editEvent', pathParameters: {'eventId': widget.eventId}),
             ),
             IconButton(
               icon: AppIcon(AppIconName.trash, color: colors.error),
@@ -58,7 +70,7 @@ class EventDetailScreen extends ConsumerWidget {
                 );
 
                 if (confirm == true) {
-                  await ref.eventNotifier.deleteEvent(eventId);
+                  await ref.read(eventNotifierProvider.notifier).deleteEvent(widget.eventId);
                   if (context.mounted) {
                     context.goNamed('eventList');
                   }
@@ -72,17 +84,19 @@ class EventDetailScreen extends ConsumerWidget {
           ? const Center(child: CircularProgressIndicator())
           : isNotFound
               ? Center(child: AppText.bodyMd('Event not found', color: colors.error))
-              : EventDetailBody(event: event!),
+              : EventDetailBody(event: event, isRegistered: eventState.isRegistered),
     );
   }
 }
 
 class EventDetailBody extends StatelessWidget {
   final EventModel event;
+  final bool isRegistered;
 
   const EventDetailBody({
     super.key,
     required this.event,
+    required this.isRegistered,
   });
 
   @override
@@ -119,7 +133,9 @@ class EventDetailBody extends StatelessWidget {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Expanded(child: AppText.displayMd(event.title)),
-                    AppBadge.success('Open'),
+                    isRegistered 
+                      ? AppBadge.success('Registered')
+                      : AppBadge.info('Open'),
                   ],
                 ),
                 const SizedBox(height: AppSpacing.s6),
@@ -147,14 +163,22 @@ class EventDetailBody extends StatelessWidget {
                 const SizedBox(height: AppSpacing.s3),
                 AppText.bodyMd(event.description, color: colors.primary.withAlpha((0.8 * 255).toInt())),
                 const SizedBox(height: AppSpacing.s10),
-                AppButton.primary(
-                  label: 'Register for Event',
-                  onPressed: () => context.goNamed('registration',
-                      pathParameters: {'eventId': event.id}),
-                  fullWidth: true,
-                  size: AppButtonSize.lg,
-                  leading: const AppIcon(AppIconName.check, color: Colors.white),
-                ),
+                isRegistered
+                  ? AppButton.secondary(
+                      label: 'Already Registered',
+                      onPressed: () {}, // Disable by passing empty or null if AppButton supports it
+                      fullWidth: true,
+                      size: AppButtonSize.lg,
+                      leading: AppIcon(AppIconName.check, color: colors.success),
+                    )
+                  : AppButton.primary(
+                      label: 'Register for Event',
+                      onPressed: () => context.goNamed('registration',
+                          pathParameters: {'eventId': event.id}),
+                      fullWidth: true,
+                      size: AppButtonSize.lg,
+                      leading: const AppIcon(AppIconName.check, color: Colors.white),
+                    ),
                 const SizedBox(height: AppSpacing.s8),
               ],
             ),

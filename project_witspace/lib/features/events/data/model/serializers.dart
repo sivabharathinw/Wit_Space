@@ -41,6 +41,10 @@ class FirestoreTimestampSerializer implements PrimitiveSerializer<DateTime> {
     if (serialized is int) {
       return DateTime.fromMicrosecondsSinceEpoch(serialized);
     }
+    //if the incoming data is already a DateTime, return it
+    if (serialized is DateTime) {
+      return serialized;
+    }
     //otherwise return the incoming date time
     return DateTime.parse(serialized as String);
   }

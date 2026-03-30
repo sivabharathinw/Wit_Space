@@ -31,6 +31,15 @@ class _RegistrationScreenState extends ConsumerState<RegistrationScreen> {
   final _designationController = TextEditingController();
 
   @override
+  void initState() {
+    super.initState();
+    // Reset status when entering the screen to clear previous registration data
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(eventNotifierProvider.notifier).resetStatus();
+    });
+  }
+
+  @override
   void dispose() {
     _nameController.dispose();
     _emailController.dispose();
