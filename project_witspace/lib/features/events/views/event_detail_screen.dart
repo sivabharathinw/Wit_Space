@@ -100,15 +100,15 @@ class EventDetailBody extends StatelessWidget {
               fit: BoxFit.cover,
               errorBuilder: (context, error, stackTrace) => Container(
                 height: 300,
-                color: colors.border.withOpacity(0.5),
+                color: colors.border.withAlpha((0.5 * 255).toInt()),
                 child: AppIcon(AppIconName.grid, size: 100, color: colors.textMuted),
               ),
             )
           else
             Container(
               height: 300,
-              color: colors.primary.withOpacity(0.05),
-              child: AppIcon(AppIconName.calendar, size: 100, color: colors.primary.withOpacity(0.2)),
+              color: colors.primary.withAlpha((0.05 * 255).toInt()),
+              child: AppIcon(AppIconName.calendar, size: 100, color: colors.primary.withAlpha((0.2 * 255).toInt())),
             ),
           Padding(
             padding: const EdgeInsets.all(AppSpacing.s6),
@@ -143,9 +143,9 @@ class EventDetailBody extends StatelessWidget {
                   ),
                 ]),
                 const SizedBox(height: AppSpacing.s8),
-                AppText.sectionLabel('DESCRIPTION', color: colors.primary.withOpacity(0.5)),
+                AppText.sectionLabel('DESCRIPTION', color: colors.primary.withAlpha((0.5 * 255).toInt())),
                 const SizedBox(height: AppSpacing.s3),
-                AppText.bodyMd(event.description, color: colors.primary.withOpacity(0.8)),
+                AppText.bodyMd(event.description, color: colors.primary.withAlpha((0.8 * 255).toInt())),
                 const SizedBox(height: AppSpacing.s10),
                 AppButton.primary(
                   label: 'Register for Event',
@@ -207,7 +207,7 @@ class EventInfoRow extends StatelessWidget {
         Container(
           padding: const EdgeInsets.all(AppSpacing.s2),
           decoration: BoxDecoration(
-            color: colors.primary.withOpacity(0.1),
+            color: colors.primary.withAlpha((0.1 * 255).toInt()),
             borderRadius: BorderRadius.circular(8),
           ),
           child: AppIcon(icon, size: 18, color: colors.primary),

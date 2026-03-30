@@ -242,7 +242,7 @@ class EditEventForm extends StatelessWidget {
                             errorBuilder: (context, error, stackTrace) => Container(
                               height: 200,
                               width: double.infinity,
-                              color: colors.border.withOpacity(0.5),
+                              color: colors.border.withAlpha((0.5 * 255).toInt()),
                               child: Center(
                                 child: Column(
                                   mainAxisAlignment: MainAxisAlignment.center,

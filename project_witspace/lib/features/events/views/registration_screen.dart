@@ -27,12 +27,16 @@ class _RegistrationScreenState extends ConsumerState<RegistrationScreen> {
   final _nameController = TextEditingController();
   final _emailController = TextEditingController();
   final _phoneController = TextEditingController();
+  final _companyController = TextEditingController();
+  final _designationController = TextEditingController();
 
   @override
   void dispose() {
     _nameController.dispose();
     _emailController.dispose();
     _phoneController.dispose();
+    _companyController.dispose();
+    _designationController.dispose();
     super.dispose();
   }
 
@@ -69,13 +73,13 @@ class _RegistrationScreenState extends ConsumerState<RegistrationScreen> {
         final registration = RegistrationModel((b) => b
           ..id = ''
           ..eventId = widget.eventId
-          ..userId = 'tempUserId_${DateTime.now().millisecondsSinceEpoch}'
+          ..userId = 'temp_user_id'
           ..fullName = _nameController.text
           ..email = _emailController.text
           ..phone = _phoneController.text
+          ..company = _companyController.text
+          ..designation = _designationController.text
           ..registeredAt = DateTime.now()
-          ..checkedIn = false
-          ..checkedOut = false
         );
 
         await ref.eventNotifier.register(registration);
@@ -125,6 +129,8 @@ class _RegistrationScreenState extends ConsumerState<RegistrationScreen> {
         nameController: _nameController,
         emailController: _emailController,
         phoneController: _phoneController,
+        companyController: _companyController,
+        designationController: _designationController,
         formKey: _formKey,
         onSubmit: _submit,
       )
@@ -140,6 +146,8 @@ class RegistrationForm extends StatelessWidget {
   final TextEditingController nameController;
   final TextEditingController emailController;
   final TextEditingController phoneController;
+  final TextEditingController companyController;
+  final TextEditingController designationController;
   final GlobalKey<FormState> formKey;
   final VoidCallback onSubmit;
 
@@ -149,6 +157,8 @@ class RegistrationForm extends StatelessWidget {
     required this.nameController,
     required this.emailController,
     required this.phoneController,
+    required this.companyController,
+    required this.designationController,
     required this.formKey,
     required this.onSubmit,
   });
@@ -192,6 +202,22 @@ class RegistrationForm extends StatelessWidget {
               fullWidth: true,
               prefixIcon: const AppIcon(AppIconName.phone, size: 18),
               validator: (v) => v == null || v.isEmpty ? 'Phone is required' : null,
+            ),
+            const SizedBox(height: AppSpacing.s4),
+            AppTextField(
+              label: 'Company',
+              hint: 'Acme Inc.',
+              controller: companyController,
+              fullWidth: true,
+              prefixIcon: const AppIcon(AppIconName.creditCard, size: 18),
+            ),
+            const SizedBox(height: AppSpacing.s4),
+            AppTextField(
+              label: 'Designation',
+              hint: 'Software Engineer',
+              controller: designationController,
+              fullWidth: true,
+              prefixIcon: const AppIcon(AppIconName.users, size: 18),
             ),
             const SizedBox(height: AppSpacing.s10),
             AppButton.primary(
@@ -258,7 +284,7 @@ class RegistrationSuccessCard extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(AppSpacing.s4),
             decoration: BoxDecoration(
-              color: colors.success.withOpacity(0.1),
+              color: colors.success.withAlpha((0.1 * 255).toInt()),
               shape: BoxShape.circle,
             ),
             child: AppIcon(AppIconName.check, color: colors.success, size: 48),

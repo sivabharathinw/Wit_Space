@@ -28,6 +28,13 @@ class _$EventStateSerializer implements StructuredSerializer<EventState> {
           const FullType(EventModel),
         ]),
       ),
+      'notifications',
+      serializers.serialize(
+        object.notifications,
+        specifiedType: const FullType(BuiltList, const [
+          const FullType(NotificationModel),
+        ]),
+      ),
       'isLoading',
       serializers.serialize(
         object.isLoading,
@@ -79,6 +86,17 @@ class _$EventStateSerializer implements StructuredSerializer<EventState> {
                 as BuiltList<Object?>,
           );
           break;
+        case 'notifications':
+          result.notifications.replace(
+            serializers.deserialize(
+                  value,
+                  specifiedType: const FullType(BuiltList, const [
+                    const FullType(NotificationModel),
+                  ]),
+                )!
+                as BuiltList<Object?>,
+          );
+          break;
         case 'isLoading':
           result.isLoading =
               serializers.deserialize(
@@ -114,6 +132,8 @@ class _$EventState extends EventState {
   @override
   final BuiltList<EventModel> events;
   @override
+  final BuiltList<NotificationModel> notifications;
+  @override
   final bool isLoading;
   @override
   final String? error;
@@ -125,6 +145,7 @@ class _$EventState extends EventState {
 
   _$EventState._({
     required this.events,
+    required this.notifications,
     required this.isLoading,
     this.error,
     this.registrationId,
@@ -141,6 +162,7 @@ class _$EventState extends EventState {
     if (identical(other, this)) return true;
     return other is EventState &&
         events == other.events &&
+        notifications == other.notifications &&
         isLoading == other.isLoading &&
         error == other.error &&
         registrationId == other.registrationId;
@@ -150,6 +172,7 @@ class _$EventState extends EventState {
   int get hashCode {
     var _$hash = 0;
     _$hash = $jc(_$hash, events.hashCode);
+    _$hash = $jc(_$hash, notifications.hashCode);
     _$hash = $jc(_$hash, isLoading.hashCode);
     _$hash = $jc(_$hash, error.hashCode);
     _$hash = $jc(_$hash, registrationId.hashCode);
@@ -161,6 +184,7 @@ class _$EventState extends EventState {
   String toString() {
     return (newBuiltValueToStringHelper(r'EventState')
           ..add('events', events)
+          ..add('notifications', notifications)
           ..add('isLoading', isLoading)
           ..add('error', error)
           ..add('registrationId', registrationId))
@@ -175,6 +199,12 @@ class EventStateBuilder implements Builder<EventState, EventStateBuilder> {
   ListBuilder<EventModel> get events =>
       _$this._events ??= ListBuilder<EventModel>();
   set events(ListBuilder<EventModel>? events) => _$this._events = events;
+
+  ListBuilder<NotificationModel>? _notifications;
+  ListBuilder<NotificationModel> get notifications =>
+      _$this._notifications ??= ListBuilder<NotificationModel>();
+  set notifications(ListBuilder<NotificationModel>? notifications) =>
+      _$this._notifications = notifications;
 
   bool? _isLoading;
   bool? get isLoading => _$this._isLoading;
@@ -195,6 +225,7 @@ class EventStateBuilder implements Builder<EventState, EventStateBuilder> {
     final $v = _$v;
     if ($v != null) {
       _events = $v.events.toBuilder();
+      _notifications = $v.notifications.toBuilder();
       _isLoading = $v.isLoading;
       _error = $v.error;
       _registrationId = $v.registrationId;
@@ -223,6 +254,7 @@ class EventStateBuilder implements Builder<EventState, EventStateBuilder> {
           _$v ??
           _$EventState._(
             events: events.build(),
+            notifications: notifications.build(),
             isLoading: BuiltValueNullFieldError.checkNotNull(
               isLoading,
               r'EventState',
@@ -236,6 +268,8 @@ class EventStateBuilder implements Builder<EventState, EventStateBuilder> {
       try {
         _$failedField = 'events';
         events.build();
+        _$failedField = 'notifications';
+        notifications.build();
       } catch (e) {
         throw BuiltValueNestedFieldError(
           r'EventState',

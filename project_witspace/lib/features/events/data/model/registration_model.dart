@@ -1,4 +1,4 @@
-library registration_model;
+
 
 import 'package:built_value/built_value.dart';
 import 'package:built_value/serializer.dart';
@@ -13,9 +13,9 @@ abstract class RegistrationModel implements Built<RegistrationModel, Registratio
   String get fullName;
   String get email;
   String get phone;
+  String get company;
+  String get designation;
   DateTime get registeredAt;
-  bool get checkedIn;
-  bool get checkedOut;
 
   RegistrationModel._();
   factory RegistrationModel([void Function(RegistrationModelBuilder) updates]) = _$RegistrationModel;

@@ -8,6 +8,7 @@ import '../../../src/components/app_icon.dart';
 import '../../../src/tokens/spacing.dart';
 import '../../../src/widgets/extensions.dart';
 import '../data/model/event_model.dart';
+import '../viewmodel/event_viewmodel.dart';
 import 'event_ref_extensions.dart';
 
 class EventListScreen extends ConsumerWidget {
@@ -24,6 +25,9 @@ class EventListScreen extends ConsumerWidget {
         title: AppText.headingLg('Events'),
         backgroundColor: colors.bgPage,
         elevation: 0,
+        actions: [
+          _NotificationIconButton(unreadCount: eventState.unreadNotificationsCount),
+        ],
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => context.goNamed('createEvent'),
@@ -45,6 +49,58 @@ class EventListScreen extends ConsumerWidget {
         ),
       )
           : EventListView(events: events.toList()),
+    );
+  }
+}
+
+class _NotificationIconButton extends StatelessWidget {
+  final int unreadCount;
+
+  const _NotificationIconButton({required this.unreadCount});
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    return SizedBox(
+      width: 48,
+      height: 48,
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          IconButton(
+            icon: AppIcon(AppIconName.bell, color: colors.textPrimary),
+            onPressed: () => context.pushNamed('notifications'),
+          ),
+          if (unreadCount > 0)
+            Positioned(
+              right: 6,
+              top: 6,
+              child: Container(
+                padding: const EdgeInsets.all(2),
+                decoration: BoxDecoration(
+                  color: colors.error,
+                  shape: BoxShape.circle,
+                  border: Border.all(color: colors.bgPage, width: 1.5),
+                ),
+                constraints: const BoxConstraints(
+                  minWidth: 16,
+                  minHeight: 16,
+                ),
+                child: Center(
+                  child: Text(
+                    unreadCount > 9 ? '9+' : unreadCount.toString(),
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 9,
+                      fontWeight: FontWeight.bold,
+                      height: 1,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
     );
   }
 }
@@ -80,7 +136,7 @@ class EventListView extends StatelessWidget {
                       fit: BoxFit.cover,
                       errorBuilder: (context, error, stackTrace) => Container(
                         height: 220,
-                        color: colors.border.withOpacity(0.5),
+                        color: colors.border.withAlpha((0.5 * 255).toInt()),
                         child: AppIcon(AppIconName.grid, size: 48, color: colors.textMuted),
                       ),
                     ),
@@ -94,13 +150,13 @@ class EventListView extends StatelessWidget {
                       const SizedBox(height: AppSpacing.s2),
                       Row(
                         children: [
-                          AppIcon(AppIconName.calendar, size: 14, color: colors.primary.withOpacity(0.7)),
+                          AppIcon(AppIconName.calendar, size: 14, color: colors.primary.withAlpha((0.7 * 255).toInt())),
                           const SizedBox(width: AppSpacing.s1),
-                          AppText.bodySm(event.date.toIso8601String().split('T')[0], color: colors.primary.withOpacity(0.7)),
+                          AppText.bodySm(event.date.toIso8601String().split('T')[0], color: colors.primary.withAlpha((0.7 * 255).toInt())),
                           const SizedBox(width: AppSpacing.s4),
-                          AppIcon(AppIconName.mapPin, size: 14, color: colors.primary.withOpacity(0.7)),
+                          AppIcon(AppIconName.mapPin, size: 14, color: colors.primary.withAlpha((0.7 * 255).toInt())),
                           const SizedBox(width: AppSpacing.s1),
-                          Expanded(child: AppText.bodySm(event.location, color: colors.primary.withOpacity(0.7), overflow: TextOverflow.ellipsis)),
+                          Expanded(child: AppText.bodySm(event.location, color: colors.primary.withAlpha((0.7 * 255).toInt()), overflow: TextOverflow.ellipsis)),
                         ],
                       ),
                     ],

@@ -10,10 +10,17 @@ Serializers _$serializers =
     (Serializers().toBuilder()
           ..add(EventModel.serializer)
           ..add(EventState.serializer)
+          ..add(NotificationModel.serializer)
           ..add(RegistrationModel.serializer)
           ..addBuilderFactory(
             const FullType(BuiltList, const [const FullType(EventModel)]),
             () => ListBuilder<EventModel>(),
+          )
+          ..addBuilderFactory(
+            const FullType(BuiltList, const [
+              const FullType(NotificationModel),
+            ]),
+            () => ListBuilder<NotificationModel>(),
           ))
         .build();
 

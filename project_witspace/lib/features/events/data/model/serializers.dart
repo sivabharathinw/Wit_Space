@@ -1,4 +1,4 @@
-library serializers;
+
 
 import 'package:built_value/built_value.dart';
 import 'package:built_value/serializer.dart';
@@ -10,6 +10,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'event_model.dart';
 import 'registration_model.dart';
 import 'event_state.dart';
+import 'notification_model.dart';
 
 part 'serializers.g.dart';
 
@@ -17,6 +18,7 @@ part 'serializers.g.dart';
   EventModel,
   RegistrationModel,
   EventState,
+  NotificationModel,
 ])
 final Serializers serializers = (_$serializers.toBuilder()
 //custom serializer for timestap from firebase
