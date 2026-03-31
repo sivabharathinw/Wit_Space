@@ -92,10 +92,10 @@ class EventNotifier extends StateNotifier<EventState> {
       );
       
       // Also instantly trigger the local push notification pop-up
-      await _repository.showLocalNotification(
-        'New Event Created',
-        'Your event "${event.title}" has been successfully created.',
-      );
+      // await _repository.showLocalNotification(
+      //   'New Event Created',
+      //   'Your event "${event.title}" has been successfully created.',
+      // );
     }
     _updateState(isLoading: false);
   }

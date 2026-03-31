@@ -1,72 +1,48 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import '../model/event_model.dart';
 import '../model/registration_model.dart';
 import '../model/notification_model.dart';
 
 class EventService {
   final FirebaseFirestore _firestore;
-  //localnotification is used to send noti from the app without server like fcm
-  //so need flutterlocalnotfication plugin
-  final FlutterLocalNotificationsPlugin _localNotifications = FlutterLocalNotificationsPlugin();
+  // FCM to send notifications
+  final FirebaseMessaging _messaging = FirebaseMessaging.instance;
 
   EventService(this._firestore);
 
-  // initialize notification service
+  // Initialize notification service
   Future<void> init() async {
-    //set up the local notifications
-    await _initLocalNotification();
+    // Request permission from user
+    await _requestPermission();
+    // Listen for FCM messages
+    _listenFCM();
+    await saveDeviceToken('temp_user_id');
+  }
+  Future<void> saveDeviceToken(String userId) async {
+    String? token = await _messaging.getToken();
+
+    if (token != null) {
+      await _firestore.collection('users').doc(userId).set({
+        'fcmToken': token,
+      }, SetOptions(merge: true));
+    }
   }
 
-
-
-//this method initialize the local notifications
-  Future<void> _initLocalNotification() async {
-    //@mipmap/ic_launcher  is the icon for the notifications it  is located on the and/app/src/main/res/
-    const androidSettings = AndroidInitializationSettings('@mipmap/ic_launcher');
-    //IntilizetionSetings holds settings for all platforms andr,ios
-    const initSettings = InitializationSettings(android: androidSettings);
-    //initizialize the local notification with android settings to show the notifications
-    await _localNotifications.initialize(settings: initSettings);
-
-//creating the notification channel this controls the notifications behaviour
-    const channel = AndroidNotificationChannel(
-      //1st arg is channel_id unique id used by the system to indetify the channel
-      'channel_id',
-      //channel name it is visible to user
-      'channel_name',
-      description: 'Used for event push notifications',
-      //importance represent how imp teh notificatiosn are
-      importance: Importance.max,
-      enableVibration: true,
-      playSound: true,
-    );
-    await _localNotifications
-//to get the platform specific implementation of the flutter local notifications plugin
-        .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
-    //create the noti channel
-        ?.createNotificationChannel(channel);
+  Future<void> _requestPermission() async {
+    await _messaging.requestPermission();
   }
 
+  void _listenFCM() {
+    // Listen to messages when the app is in foreground
+    FirebaseMessaging.onMessage.listen((RemoteMessage message) {
+      final title = message.notification?.title;
+      final body = message.notification?.body;
+      if (title != null && body != null) {
 
-
-  //this mtd define how the noti behaves on android
-  Future<void> showLocalNotification(String title, String body) async {
-    const androidDetails = AndroidNotificationDetails(
-      'channel_id',
-      'channel_name',
-      importance: Importance.max,
-      priority: Priority.high,
-      showWhen: true,
-    );
-    //localnotification.show() actualluy shows the noti which needs an notification details obj which has android details
-    const notificationDetails = NotificationDetails(android: androidDetails);
-    await _localNotifications.show(
-      id: 0,
-      title: title,
-      body: body,
-      notificationDetails: notificationDetails,
-    );
+        print('FCM Notification received - Title: $title, Body: $body');
+      }
+    });
   }
 
   // read all events
@@ -79,13 +55,14 @@ class EventService {
       return snapshot.docs.map((doc) {
         final data = doc.data();
         data['id'] = doc.id;
-        // add default values for missing fields
         data['createdBy'] = data['createdBy'] ?? 'Unknown';
         data['createdAt'] = data['createdAt'] ?? DateTime.now();
         final rawImageUrl = data['imageUrl'] as String? ?? '';
-        data['imageUrl'] = (rawImageUrl.startsWith('http') && rawImageUrl.length > 10) ? rawImageUrl : '';
+        data['imageUrl'] =
+        (rawImageUrl.startsWith('http') && rawImageUrl.length > 10)
+            ? rawImageUrl
+            : '';
         data['time'] = data['time'] ?? '00:00';
-
         return EventModel.fromJson(data);
       }).whereType<EventModel>().toList();
     });
@@ -97,13 +74,14 @@ class EventService {
       if (!doc.exists) throw Exception('Event not found');
       final data = doc.data()!;
       data['id'] = doc.id;
-      // Add default values for missing fields
       data['createdBy'] = data['createdBy'] ?? 'Unknown';
       data['createdAt'] = data['createdAt'] ?? DateTime.now();
       final rawImageUrl = data['imageUrl'] as String? ?? '';
-      data['imageUrl'] = (rawImageUrl.startsWith('http') && rawImageUrl.length > 10) ? rawImageUrl : '';
+      data['imageUrl'] =
+      (rawImageUrl.startsWith('http') && rawImageUrl.length > 10)
+          ? rawImageUrl
+          : '';
       data['time'] = data['time'] ?? '00:00';
-
       return EventModel.fromJson(data)!;
     });
   }
@@ -140,7 +118,8 @@ class EventService {
   }
 
   // check if user is registered for an event
-  Future<RegistrationModel?> getUserRegistrationForEvent(String eventId, String userId) async {
+  Future<RegistrationModel?> getUserRegistrationForEvent(
+      String eventId, String userId) async {
     final snapshot = await _firestore
         .collection('events')
         .doc(eventId)
