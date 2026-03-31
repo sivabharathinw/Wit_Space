@@ -1,5 +1,4 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import '../model/event_model.dart';
 import '../model/registration_model.dart';
@@ -7,8 +6,6 @@ import '../model/notification_model.dart';
 
 class EventService {
   final FirebaseFirestore _firestore;
-  //it is provided by fcm(firebase cloud message) to send notification
-  final FirebaseMessaging _messaging = FirebaseMessaging.instance;
   //localnotification is used to send noti from the app without server like fcm
   //so need flutterlocalnotfication plugin
   final FlutterLocalNotificationsPlugin _localNotifications = FlutterLocalNotificationsPlugin();
@@ -17,18 +14,11 @@ class EventService {
 
   // initialize notification service
   Future<void> init() async {
-  //to  get permission from the user to allow notifications
-    await _requestPermission();
     //set up the local notifications
-
     await _initLocalNotification();
-
   }
 
-  Future<void> _requestPermission() async {
-    //requestPermission() is a method from the fcm to get req from the user
-    await _messaging.requestPermission();
-  }
+
 
 //this method initialize the local notifications
   Future<void> _initLocalNotification() async {
@@ -57,6 +47,7 @@ class EventService {
     //create the noti channel
         ?.createNotificationChannel(channel);
   }
+
 
 
   //this mtd define how the noti behaves on android
