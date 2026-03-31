@@ -8,8 +8,12 @@ import '../data/model/notification_model.dart';
 import '../data/model/event_state.dart';
 import '../data/repository/event_service.dart';
 
+final eventServiceProvider = Provider<EventService>((ref) {
+  return EventService(FirebaseFirestore.instance);
+});
+
 final eventNotifierProvider = StateNotifierProvider<EventNotifier, EventState>((ref) {
-  final repository = EventService(FirebaseFirestore.instance);
+  final repository = ref.watch(eventServiceProvider);
   return EventNotifier(repository);
 });
 
@@ -26,6 +30,7 @@ class EventNotifier extends StateNotifier<EventState> {
   }
 
   void _init() {
+    _repository.init(); // call the inti method in service  to set up the notification
     _loadEvents();
     setUserId('temp_user_id');
   }
@@ -47,7 +52,6 @@ class EventNotifier extends StateNotifier<EventState> {
   void _loadNotifications() {
     if (_currentUserId == null) return;
     
-    _notificationsSubscription?.cancel();
     _notificationsSubscription = _repository.getNotificationsStream(_currentUserId!).listen(
       (notifications) {
         _updateState(notifications: notifications);
@@ -85,6 +89,12 @@ class EventNotifier extends StateNotifier<EventState> {
         receiverId: _currentUserId!,
         title: 'New Event Created',
         message: 'Your event "${event.title}" has been successfully created.',
+      );
+      
+      // Also instantly trigger the local push notification pop-up
+      await _repository.showLocalNotification(
+        'New Event Created',
+        'Your event "${event.title}" has been successfully created.',
       );
     }
     _updateState(isLoading: false);

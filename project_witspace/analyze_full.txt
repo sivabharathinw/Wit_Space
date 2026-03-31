@@ -1,0 +1,6 @@
+﻿Analyzing event_service.dart...
+
+  error - event_service.dart:29:31 - The named parameter 'settings' is required, but there's no corresponding argument. Try adding the required argument. - missing_required_argument
+  error - event_service.dart:29:42 - The named parameter 'initializationSettings' isn't defined. Try correcting the name to an existing named parameter's name, or defining a named parameter with the name 'initializationSettings'. - undefined_named_parameter
+
+2 issues found.

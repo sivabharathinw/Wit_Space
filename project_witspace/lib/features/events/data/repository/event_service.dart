@@ -1,14 +1,82 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import '../model/event_model.dart';
 import '../model/registration_model.dart';
 import '../model/notification_model.dart';
-import '../model/serializers.dart';
-
 
 class EventService {
   final FirebaseFirestore _firestore;
+  //it is provided by fcm(firebase cloud message) to send notification
+  final FirebaseMessaging _messaging = FirebaseMessaging.instance;
+  //localnotification is used to send noti from the app without server like fcm
+  //so need flutterlocalnotfication plugin
+  final FlutterLocalNotificationsPlugin _localNotifications = FlutterLocalNotificationsPlugin();
 
   EventService(this._firestore);
+
+  // initialize notification service
+  Future<void> init() async {
+  //to  get permission from the user to allow notifications
+    await _requestPermission();
+    //set up the local notifications
+
+    await _initLocalNotification();
+
+  }
+
+  Future<void> _requestPermission() async {
+    //requestPermission() is a method from the fcm to get req from the user
+    await _messaging.requestPermission();
+  }
+
+//this method initialize the local notifications
+  Future<void> _initLocalNotification() async {
+    //@mipmap/ic_launcher  is the icon for the notifications it  is located on the and/app/src/main/res/
+    const androidSettings = AndroidInitializationSettings('@mipmap/ic_launcher');
+    //IntilizetionSetings holds settings for all platforms andr,ios
+    const initSettings = InitializationSettings(android: androidSettings);
+    //initizialize the local notification with android settings to show the notifications
+    await _localNotifications.initialize(settings: initSettings);
+
+//creating the notification channel this controls the notifications behaviour
+    const channel = AndroidNotificationChannel(
+      //1st arg is channel_id unique id used by the system to indetify the channel
+      'channel_id',
+      //channel name it is visible to user
+      'channel_name',
+      description: 'Used for event push notifications',
+      //importance represent how imp teh notificatiosn are
+      importance: Importance.max,
+      enableVibration: true,
+      playSound: true,
+    );
+    await _localNotifications
+//to get the platform specific implementation of the flutter local notifications plugin
+        .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
+    //create the noti channel
+        ?.createNotificationChannel(channel);
+  }
+
+
+  //this mtd define how the noti behaves on android
+  Future<void> showLocalNotification(String title, String body) async {
+    const androidDetails = AndroidNotificationDetails(
+      'channel_id',
+      'channel_name',
+      importance: Importance.max,
+      priority: Priority.high,
+      showWhen: true,
+    );
+    //localnotification.show() actualluy shows the noti which needs an notification details obj which has android details
+    const notificationDetails = NotificationDetails(android: androidDetails);
+    await _localNotifications.show(
+      id: 0,
+      title: title,
+      body: body,
+      notificationDetails: notificationDetails,
+    );
+  }
 
   // read all events
   Stream<List<EventModel>> getEventsStream() {
@@ -71,7 +139,6 @@ class EventService {
   // register for event
   Future<String> registerForEvent(RegistrationModel registration) async {
     final data = registration.toJson();
-
     data.remove('id');
     final docRef = await _firestore
         .collection('events')
@@ -80,17 +147,17 @@ class EventService {
         .add(data);
     return docRef.id;
   }
-//to check if the user register for particular event already 
+
+  // check if user is registered for an event
   Future<RegistrationModel?> getUserRegistrationForEvent(String eventId, String userId) async {
     final snapshot = await _firestore
         .collection('events')
         .doc(eventId)
         .collection('registrations')
         .where('userId', isEqualTo: userId)
-    //get only one result
         .limit(1)
         .get();
-//if teh result is empty retruns null else return the first doc
+
     if (snapshot.docs.isEmpty) return null;
     final doc = snapshot.docs.first;
     final data = doc.data();
@@ -98,7 +165,7 @@ class EventService {
     return RegistrationModel.fromJson(data);
   }
 
-// it listens continously and returns a stream of list of registrations
+  // get user registrations stream
   Stream<List<RegistrationModel>> getUserRegistrationsStream(String userId) {
     return _firestore
         .collectionGroup('registrations')
@@ -109,13 +176,11 @@ class EventService {
         final data = doc.data();
         data['id'] = doc.id;
         return RegistrationModel.fromJson(data);
-        //wheretype<T> ,means it removes am\nything that is not its type so only reg model datas are presnt
       }).whereType<RegistrationModel>().toList();
     });
   }
 
-
-
+  // get notifications stream
   Stream<List<NotificationModel>> getNotificationsStream(String userId) {
     return _firestore
         .collection('notifications')
@@ -124,10 +189,8 @@ class EventService {
         .map((snapshot) {
       return snapshot.docs.map((doc) {
         final data = doc.data();
-        //manually set the id
         data['id'] = doc.id;
         data['createdAt'] = data['createdAt'] ?? DateTime.now();
-        
         return NotificationModel.fromJson(data);
       }).whereType<NotificationModel>().toList();
     });
@@ -143,16 +206,13 @@ class EventService {
     final snapshot = await _firestore
         .collection('notifications')
         .where('receiverId', isEqualTo: userId)
-    //fetch only unread notifications
         .where('hasSeen', isEqualTo: false)
         .get();
-//create batch to perform multiple update once
+
     final batch = _firestore.batch();
     for (var doc in snapshot.docs) {
-      //doc.reference means exact locationn of that documment(like path)
       batch.update(doc.reference, {'hasSeen': true});
     }
-    //commit means perform the batch
     await batch.commit();
   }
 
@@ -171,7 +231,7 @@ class EventService {
         .collection('notifications')
         .where('receiverId', isEqualTo: userId)
         .get();
-    
+
     final batch = _firestore.batch();
     for (var doc in snapshot.docs) {
       batch.delete(doc.reference);
@@ -191,7 +251,6 @@ class EventService {
       'title': title,
       'message': message,
       'hasSeen': false,
-      //FieldValue means to tell the firestore to set the current time automatically
       'createdAt': FieldValue.serverTimestamp(),
     });
   }

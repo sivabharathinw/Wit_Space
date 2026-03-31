@@ -1,4 +1,8 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Required for showing notifications on Android 13+ -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
+    <!-- Required for heads-up / vibrating notifications -->
+    <uses-permission android:name="android.permission.VIBRATE"/>
     <application
         android:label="project_witspace"
         android:name="${applicationName}"
