@@ -25,8 +25,23 @@ void main() async {
 
   RemoteMessage? initialMessage = await FirebaseMessaging.instance.getInitialMessage();
   if (initialMessage != null) {
-    print('Initial message: ${initialMessage.messageId}');
+    print('Terminated state initial message: ${initialMessage.messageId}');
+    final route = initialMessage.data['route'] as String?;
+    if (route != null) {
+      // Small delay to ensure router is ready
+      Future.delayed(const Duration(milliseconds: 500), () {
+        appRouter.push(route);
+      });
+    }
   }
+
+  FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
+    print('Background state message tap: ${message.messageId}');
+    final route = message.data['route'] as String?;
+    if (route != null) {
+      appRouter.push(route);
+    }
+  });
   runApp(
     const ProviderScope(
       child: MyApp(),

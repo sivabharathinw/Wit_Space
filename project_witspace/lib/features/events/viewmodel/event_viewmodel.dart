@@ -53,7 +53,11 @@ class EventNotifier extends StateNotifier<EventState> {
     if (_currentUserId == null) return;
     
     _notificationsSubscription = _repository.getNotificationsStream(_currentUserId!).listen(
-      (notifications) {
+      (maps) {
+        final notifications = maps
+            .map((map) => NotificationModel.fromJson(map))
+            .whereType<NotificationModel>()
+            .toList();
         _updateState(notifications: notifications);
       },
       onError: (error) {
@@ -91,11 +95,7 @@ class EventNotifier extends StateNotifier<EventState> {
         message: 'Your event "${event.title}" has been successfully created.',
       );
 
-      // Also instantly trigger the local push notification pop-up
-      //  await _repository.showLocalNotification(
-      //   'New Event Created',
-      //      'Your event "${event.title}" has been successfully created.',
-      //  );
+
     }
     _updateState(isLoading: false);
   }
@@ -153,7 +153,7 @@ class EventNotifier extends StateNotifier<EventState> {
   }
 
   Future<void> updateNotification(NotificationModel notification) async {
-    await _repository.updateNotification(notification);
+    await _repository.updateNotification(notification.id);
   }
 
   Future<void> deleteAllNotifications() async {

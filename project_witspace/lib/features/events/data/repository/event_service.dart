@@ -6,9 +6,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import '../model/event_model.dart';
 import '../model/registration_model.dart';
-import '../model/notification_model.dart';
-
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import '/router/app_router.dart';
 
 class EventService {
   final FirebaseFirestore _firestore;
@@ -16,9 +15,9 @@ class EventService {
   final FirebaseMessaging _messaging = FirebaseMessaging.instance;
   EventService(this._firestore);
 
-  // Initialize notification service
+  // initialize notification service
   Future<void> init() async {
-    // Request permission from user
+    // request permission from user
     await saveDeviceToken('temp_user_id');
     await _requestPermission();
     await _initLocalNotification();
@@ -38,7 +37,8 @@ class EventService {
       final body = message.notification?.body;
       if (title != null && body != null) {
         print('FCM Notification received - Title: $title, Body: $body');
-        showLocalNotification(title, body);
+        final payload = jsonEncode(message.data);
+        showLocalNotification(title: title, body: body, payload: payload);
       }
     });
   }
@@ -55,7 +55,20 @@ class EventService {
   Future<void> _initLocalNotification() async {
     const androidSettings = AndroidInitializationSettings('@mipmap/ic_launcher');
     const initSettings = InitializationSettings(android: androidSettings);
-    await _localNotifications.initialize(settings: initSettings);
+    await _localNotifications.initialize(
+      settings: initSettings,
+      onDidReceiveNotificationResponse: (NotificationResponse response) {
+
+        final payload = response.payload;
+        if (payload != null) {
+          final data = jsonDecode(payload) as Map<String, dynamic>;
+          final route = data['route'] as String?;
+          if (route != null) {
+            appRouter.push(route);
+          }
+        }
+      },
+    );
 
     const channel = AndroidNotificationChannel(
       'channel_id',
@@ -70,7 +83,7 @@ class EventService {
         ?.createNotificationChannel(channel);
   }
 
-  Future<void> showLocalNotification(String title, String body) async {
+  Future<void> showLocalNotification({required String title, required String body, String? payload}) async {
     const androidDetails = AndroidNotificationDetails(
       'channel_id',
       'channel_name',
@@ -84,6 +97,7 @@ class EventService {
       title: title,
       body: body,
       notificationDetails: notificationDetails,
+      payload: payload,
     );
   }
 
@@ -110,7 +124,7 @@ class EventService {
     });
   }
 
-  // Read single event
+  // read single event
   Stream<EventModel> getEventStream(String eventId) {
     return _firestore.collection('events').doc(eventId).snapshots().map((doc) {
       if (!doc.exists) throw Exception('Event not found');
@@ -128,36 +142,28 @@ class EventService {
     });
   }
 
-  // create event
   Future<void> createEvent(EventModel event) async {
-    final data = event.toJson();
-    data.remove('id');
-    await _firestore.collection('events').add(data);
-    await _sendPushNotificationToAllUsers('New Event: ${event.title}', 'A new event has been created! Join us.');
+    final docRef = await _firestore.collection('events').add(event.toJson());
+    await docRef.update({'id': docRef.id});
+    await _sendPushNotificationToAllUsers(
+      title: 'New Event: ${event.title}',
+      body: 'A new event has been created! Join us.',
+      eventId: docRef.id,
+    );
   }
-//this is the method to get access token  from service account
-  //service account is used by app to talk with the services liek firebase
-  Future<String> _getAccessToken() async {
-    // read the service account json file from assets
-    final jsonString = await rootBundle.loadString(
-        'assets/service_account.json');
-    //store the acc credentials as a object  from the json file
-    final accountCredentials = auth.ServiceAccountCredentials.fromJson(
-        jsonString);
-//scope is  a permission  ask by the app to accesses the google fcm to send notrification bcxz the event creation notification is done by app so itself is a sender too.so send notification to fcm needs to ask permisiion to google
-    final scopes = ['https://www.googleapis.com/auth/firebase.messaging'];
-    //this uses a service account and  permission to get authenticate by google
-    final client = await auth.clientViaServiceAccount(
-        accountCredentials, scopes);
 
+  Future<String> _getAccessToken() async {
+    final jsonString = await rootBundle.loadString('assets/service_account.json');
+    final accountCredentials = auth.ServiceAccountCredentials.fromJson(jsonString);
+    final scopes = ['https://www.googleapis.com/auth/firebase.messaging'];
+    final client = await auth.clientViaServiceAccount(accountCredentials, scopes);
     final accessToken = client.credentials.accessToken.data;
     client.close();
     return accessToken;
   }
-  //this method send notification from my app to fcm so only it get permission
-  Future<void> _sendPushNotificationToAllUsers(String title, String body) async {
+
+  Future<void> _sendPushNotificationToAllUsers({required String title, required String body, String? eventId}) async {
     try {
-      //extract all users from the firestore
       final snapshot = await _firestore.collection('users').where('fcmToken', isNotEqualTo: null).get();
       final tokens = snapshot.docs
           .map((doc) => doc.data()['fcmToken'] as String?)
@@ -167,22 +173,17 @@ class EventService {
 
       if (tokens.isEmpty) return;
 
-      // Project ID from firebase.json
       const String projectId = 'wit-space';
-      //this is the endpoint(url or address) where we send notification req
       final String endpoint = 'https://fcm.googleapis.com/v1/projects/$projectId/messages:send';
-      //to send notification we need access token
       final String accessToken = await _getAccessToken();
-//itearete through each device tokem
+
       for (String token in tokens) {
-        //http.post() send data to endpoint
         await http.post(
           Uri.parse(endpoint),
           headers: <String, String>{
             'Content-Type': 'application/json',
             'Authorization': 'Bearer $accessToken',
           },
-          //this th actual message to send to fcm
           body: jsonEncode(
             <String, dynamic>{
               'message': <String, dynamic>{
@@ -191,13 +192,14 @@ class EventService {
                   'title': title,
                   'body': body,
                 },
-                //android specific
+                'data': {
+                  'route': eventId != null ? '/events/$eventId' : '/events',
+                },
                 'android': <String, dynamic>{
                   'notification': <String, dynamic>{
-                    //when clcik the noti it opens the app
                     'click_action': 'FLUTTER_NOTIFICATION_CLICK',
-                  }
-                }
+                  },
+                },
               },
             },
           ),
@@ -208,10 +210,9 @@ class EventService {
     }
   }
 
-  // update event
+
   Future<void> updateEvent(EventModel event) async {
     final data = event.toJson();
-    data.remove('id');
     await _firestore.collection('events').doc(event.id).update(data);
   }
 
@@ -222,13 +223,16 @@ class EventService {
 
   // register for event
   Future<String> registerForEvent(RegistrationModel registration) async {
-    final data = registration.toJson();
-    data.remove('id');
-    final docRef = await _firestore
+    final docRef = _firestore
         .collection('events')
         .doc(registration.eventId)
         .collection('registrations')
-        .add(data);
+        .doc();
+    
+    final updatedRegistration = registration.rebuild((b) => b..id = docRef.id);
+    final data = updatedRegistration.toJson();
+    
+    await docRef.set(data);
     return docRef.id;
   }
 
@@ -266,7 +270,7 @@ class EventService {
   }
 
   // get notifications stream
-  Stream<List<NotificationModel>> getNotificationsStream(String userId) {
+  Stream<List<Map<String, dynamic>>> getNotificationsStream(String userId) {
     return _firestore
         .collection('notifications')
         .where('receiverId', isEqualTo: userId)
@@ -276,8 +280,8 @@ class EventService {
         final data = doc.data();
         data['id'] = doc.id;
         data['createdAt'] = data['createdAt'] ?? DateTime.now();
-        return NotificationModel.fromJson(data);
-      }).whereType<NotificationModel>().toList();
+        return data;
+      }).toList();
     });
   }
 
@@ -305,8 +309,8 @@ class EventService {
     await _firestore.collection('notifications').doc(notificationId).delete();
   }
 
-  Future<void> updateNotification(NotificationModel notification) async {
-    await _firestore.collection('notifications').doc(notification.id).update({
+  Future<void> updateNotification(String notificationId) async {
+    await _firestore.collection('notifications').doc(notificationId).update({
       'hasSeen': true,
     });
   }
@@ -330,7 +334,9 @@ class EventService {
     required String title,
     required String message,
   }) async {
-    await _firestore.collection('notifications').add({
+    final docRef = _firestore.collection('notifications').doc();
+    await docRef.set({
+      'id': docRef.id,
       'senderId': senderId,
       'receiverId': receiverId,
       'title': title,
