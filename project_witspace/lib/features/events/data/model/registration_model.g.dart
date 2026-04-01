@@ -50,20 +50,20 @@ class _$RegistrationModelSerializer
         object.phone,
         specifiedType: const FullType(String),
       ),
+      'company',
+      serializers.serialize(
+        object.company,
+        specifiedType: const FullType(String),
+      ),
+      'designation',
+      serializers.serialize(
+        object.designation,
+        specifiedType: const FullType(String),
+      ),
       'registeredAt',
       serializers.serialize(
         object.registeredAt,
         specifiedType: const FullType(DateTime),
-      ),
-      'checkedIn',
-      serializers.serialize(
-        object.checkedIn,
-        specifiedType: const FullType(bool),
-      ),
-      'checkedOut',
-      serializers.serialize(
-        object.checkedOut,
-        specifiedType: const FullType(bool),
       ),
     ];
 
@@ -132,6 +132,22 @@ class _$RegistrationModelSerializer
                   )!
                   as String;
           break;
+        case 'company':
+          result.company =
+              serializers.deserialize(
+                    value,
+                    specifiedType: const FullType(String),
+                  )!
+                  as String;
+          break;
+        case 'designation':
+          result.designation =
+              serializers.deserialize(
+                    value,
+                    specifiedType: const FullType(String),
+                  )!
+                  as String;
+          break;
         case 'registeredAt':
           result.registeredAt =
               serializers.deserialize(
@@ -139,22 +155,6 @@ class _$RegistrationModelSerializer
                     specifiedType: const FullType(DateTime),
                   )!
                   as DateTime;
-          break;
-        case 'checkedIn':
-          result.checkedIn =
-              serializers.deserialize(
-                    value,
-                    specifiedType: const FullType(bool),
-                  )!
-                  as bool;
-          break;
-        case 'checkedOut':
-          result.checkedOut =
-              serializers.deserialize(
-                    value,
-                    specifiedType: const FullType(bool),
-                  )!
-                  as bool;
           break;
       }
     }
@@ -177,11 +177,11 @@ class _$RegistrationModel extends RegistrationModel {
   @override
   final String phone;
   @override
+  final String company;
+  @override
+  final String designation;
+  @override
   final DateTime registeredAt;
-  @override
-  final bool checkedIn;
-  @override
-  final bool checkedOut;
 
   factory _$RegistrationModel([
     void Function(RegistrationModelBuilder)? updates,
@@ -194,9 +194,9 @@ class _$RegistrationModel extends RegistrationModel {
     required this.fullName,
     required this.email,
     required this.phone,
+    required this.company,
+    required this.designation,
     required this.registeredAt,
-    required this.checkedIn,
-    required this.checkedOut,
   }) : super._();
   @override
   RegistrationModel rebuild(void Function(RegistrationModelBuilder) updates) =>
@@ -216,9 +216,9 @@ class _$RegistrationModel extends RegistrationModel {
         fullName == other.fullName &&
         email == other.email &&
         phone == other.phone &&
-        registeredAt == other.registeredAt &&
-        checkedIn == other.checkedIn &&
-        checkedOut == other.checkedOut;
+        company == other.company &&
+        designation == other.designation &&
+        registeredAt == other.registeredAt;
   }
 
   @override
@@ -230,9 +230,9 @@ class _$RegistrationModel extends RegistrationModel {
     _$hash = $jc(_$hash, fullName.hashCode);
     _$hash = $jc(_$hash, email.hashCode);
     _$hash = $jc(_$hash, phone.hashCode);
+    _$hash = $jc(_$hash, company.hashCode);
+    _$hash = $jc(_$hash, designation.hashCode);
     _$hash = $jc(_$hash, registeredAt.hashCode);
-    _$hash = $jc(_$hash, checkedIn.hashCode);
-    _$hash = $jc(_$hash, checkedOut.hashCode);
     _$hash = $jf(_$hash);
     return _$hash;
   }
@@ -246,9 +246,9 @@ class _$RegistrationModel extends RegistrationModel {
           ..add('fullName', fullName)
           ..add('email', email)
           ..add('phone', phone)
-          ..add('registeredAt', registeredAt)
-          ..add('checkedIn', checkedIn)
-          ..add('checkedOut', checkedOut))
+          ..add('company', company)
+          ..add('designation', designation)
+          ..add('registeredAt', registeredAt))
         .toString();
   }
 }
@@ -281,18 +281,18 @@ class RegistrationModelBuilder
   String? get phone => _$this._phone;
   set phone(String? phone) => _$this._phone = phone;
 
+  String? _company;
+  String? get company => _$this._company;
+  set company(String? company) => _$this._company = company;
+
+  String? _designation;
+  String? get designation => _$this._designation;
+  set designation(String? designation) => _$this._designation = designation;
+
   DateTime? _registeredAt;
   DateTime? get registeredAt => _$this._registeredAt;
   set registeredAt(DateTime? registeredAt) =>
       _$this._registeredAt = registeredAt;
-
-  bool? _checkedIn;
-  bool? get checkedIn => _$this._checkedIn;
-  set checkedIn(bool? checkedIn) => _$this._checkedIn = checkedIn;
-
-  bool? _checkedOut;
-  bool? get checkedOut => _$this._checkedOut;
-  set checkedOut(bool? checkedOut) => _$this._checkedOut = checkedOut;
 
   RegistrationModelBuilder();
 
@@ -305,9 +305,9 @@ class RegistrationModelBuilder
       _fullName = $v.fullName;
       _email = $v.email;
       _phone = $v.phone;
+      _company = $v.company;
+      _designation = $v.designation;
       _registeredAt = $v.registeredAt;
-      _checkedIn = $v.checkedIn;
-      _checkedOut = $v.checkedOut;
       _$v = null;
     }
     return this;
@@ -360,20 +360,20 @@ class RegistrationModelBuilder
             r'RegistrationModel',
             'phone',
           ),
+          company: BuiltValueNullFieldError.checkNotNull(
+            company,
+            r'RegistrationModel',
+            'company',
+          ),
+          designation: BuiltValueNullFieldError.checkNotNull(
+            designation,
+            r'RegistrationModel',
+            'designation',
+          ),
           registeredAt: BuiltValueNullFieldError.checkNotNull(
             registeredAt,
             r'RegistrationModel',
             'registeredAt',
-          ),
-          checkedIn: BuiltValueNullFieldError.checkNotNull(
-            checkedIn,
-            r'RegistrationModel',
-            'checkedIn',
-          ),
-          checkedOut: BuiltValueNullFieldError.checkNotNull(
-            checkedOut,
-            r'RegistrationModel',
-            'checkedOut',
           ),
         );
     replace(_$result);

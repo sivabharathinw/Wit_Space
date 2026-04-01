@@ -53,9 +53,9 @@ class _$EventModelSerializer implements StructuredSerializer<EventModel> {
         object.imageUrl,
         specifiedType: const FullType(String),
       ),
-      'createdByUserId',
+      'createdBy',
       serializers.serialize(
-        object.createdByUserId,
+        object.createdBy,
         specifiedType: const FullType(String),
       ),
       'createdAt',
@@ -138,8 +138,8 @@ class _$EventModelSerializer implements StructuredSerializer<EventModel> {
                   )!
                   as String;
           break;
-        case 'createdByUserId':
-          result.createdByUserId =
+        case 'createdBy':
+          result.createdBy =
               serializers.deserialize(
                     value,
                     specifiedType: const FullType(String),
@@ -177,7 +177,7 @@ class _$EventModel extends EventModel {
   @override
   final String imageUrl;
   @override
-  final String createdByUserId;
+  final String createdBy;
   @override
   final DateTime createdAt;
 
@@ -192,7 +192,7 @@ class _$EventModel extends EventModel {
     required this.date,
     required this.time,
     required this.imageUrl,
-    required this.createdByUserId,
+    required this.createdBy,
     required this.createdAt,
   }) : super._();
   @override
@@ -213,7 +213,7 @@ class _$EventModel extends EventModel {
         date == other.date &&
         time == other.time &&
         imageUrl == other.imageUrl &&
-        createdByUserId == other.createdByUserId &&
+        createdBy == other.createdBy &&
         createdAt == other.createdAt;
   }
 
@@ -227,7 +227,7 @@ class _$EventModel extends EventModel {
     _$hash = $jc(_$hash, date.hashCode);
     _$hash = $jc(_$hash, time.hashCode);
     _$hash = $jc(_$hash, imageUrl.hashCode);
-    _$hash = $jc(_$hash, createdByUserId.hashCode);
+    _$hash = $jc(_$hash, createdBy.hashCode);
     _$hash = $jc(_$hash, createdAt.hashCode);
     _$hash = $jf(_$hash);
     return _$hash;
@@ -243,7 +243,7 @@ class _$EventModel extends EventModel {
           ..add('date', date)
           ..add('time', time)
           ..add('imageUrl', imageUrl)
-          ..add('createdByUserId', createdByUserId)
+          ..add('createdBy', createdBy)
           ..add('createdAt', createdAt))
         .toString();
   }
@@ -280,10 +280,9 @@ class EventModelBuilder implements Builder<EventModel, EventModelBuilder> {
   String? get imageUrl => _$this._imageUrl;
   set imageUrl(String? imageUrl) => _$this._imageUrl = imageUrl;
 
-  String? _createdByUserId;
-  String? get createdByUserId => _$this._createdByUserId;
-  set createdByUserId(String? createdByUserId) =>
-      _$this._createdByUserId = createdByUserId;
+  String? _createdBy;
+  String? get createdBy => _$this._createdBy;
+  set createdBy(String? createdBy) => _$this._createdBy = createdBy;
 
   DateTime? _createdAt;
   DateTime? get createdAt => _$this._createdAt;
@@ -301,7 +300,7 @@ class EventModelBuilder implements Builder<EventModel, EventModelBuilder> {
       _date = $v.date;
       _time = $v.time;
       _imageUrl = $v.imageUrl;
-      _createdByUserId = $v.createdByUserId;
+      _createdBy = $v.createdBy;
       _createdAt = $v.createdAt;
       _$v = null;
     }
@@ -356,10 +355,10 @@ class EventModelBuilder implements Builder<EventModel, EventModelBuilder> {
             r'EventModel',
             'imageUrl',
           ),
-          createdByUserId: BuiltValueNullFieldError.checkNotNull(
-            createdByUserId,
+          createdBy: BuiltValueNullFieldError.checkNotNull(
+            createdBy,
             r'EventModel',
-            'createdByUserId',
+            'createdBy',
           ),
           createdAt: BuiltValueNullFieldError.checkNotNull(
             createdAt,
