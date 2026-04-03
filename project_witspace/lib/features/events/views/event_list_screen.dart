@@ -5,18 +5,19 @@ import 'package:go_router/go_router.dart';
 import '../../../src/components/app_text.dart';
 import '../../../src/components/app_card.dart';
 import '../../../src/components/app_icon.dart';
-import '../../../src/components/app_badge.dart';
 import '../../../src/tokens/spacing.dart';
 import '../../../src/widgets/extensions.dart';
-import '../viewmodel/event_list_viewmodel.dart';
 import '../data/model/event_model.dart';
+import '../viewmodel/event_viewmodel.dart';
+import 'event_ref_extensions.dart';
 
 class EventListScreen extends ConsumerWidget {
   const EventListScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final eventsAsync = ref.watch(eventListViewModelProvider);
+    final eventState = ref.eventState;
+    final events = eventState.events;
     final colors = context.colors;
 
     return Scaffold(
@@ -24,6 +25,9 @@ class EventListScreen extends ConsumerWidget {
         title: AppText.headingLg('Events'),
         backgroundColor: colors.bgPage,
         elevation: 0,
+        actions: [
+          _NotificationIconButton(unreadCount: eventState.unreadNotificationsCount),
+        ],
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => context.goNamed('createEvent'),
@@ -31,79 +35,138 @@ class EventListScreen extends ConsumerWidget {
         icon: AppIcon(AppIconName.plus, color: colors.onPrimary, size: 18),
         label: AppText.label('Create Event', color: colors.onPrimary),
       ),
-      body: eventsAsync.when(
-        data: (events) {
-          if (events.isEmpty) {
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  AppIcon(AppIconName.calendar, size: 48, color: colors.textMuted),
-                  const SizedBox(height: AppSpacing.s4),
-                  AppText.bodyMd('No events found', color: colors.textSecondary),
-                ],
+      body: eventState.isLoading && eventState.events.isEmpty
+          ? const Center(child: CircularProgressIndicator())
+          : events.isEmpty
+          ? Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            AppIcon(AppIconName.calendar, size: 48, color: colors.textMuted),
+            const SizedBox(height: AppSpacing.s4),
+            AppText.bodyMd('No events found', color: colors.textSecondary),
+          ],
+        ),
+      )
+          : EventListView(events: events.toList()),
+    );
+  }
+}
+
+class _NotificationIconButton extends StatelessWidget {
+  final int unreadCount;
+
+  const _NotificationIconButton({required this.unreadCount});
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    return SizedBox(
+      width: 48,
+      height: 48,
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          IconButton(
+            icon: AppIcon(AppIconName.bell, color: colors.textPrimary),
+            onPressed: () => context.pushNamed('notifications'),
+          ),
+          if (unreadCount > 0)
+            Positioned(
+              right: 6,
+              top: 6,
+              child: Container(
+                padding: const EdgeInsets.all(2),
+                decoration: BoxDecoration(
+                  color: colors.error,
+                  shape: BoxShape.circle,
+                  border: Border.all(color: colors.bgPage, width: 1.5),
+                ),
+                constraints: const BoxConstraints(
+                  minWidth: 16,
+                  minHeight: 16,
+                ),
+                child: Center(
+                  child: Text(
+                    unreadCount > 9 ? '9+' : unreadCount.toString(),
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 9,
+                      fontWeight: FontWeight.bold,
+                      height: 1,
+                    ),
+                  ),
+                ),
               ),
-            );
-          }
-          return ListView.builder(
-            padding: const EdgeInsets.all(AppSpacing.s4),
-            itemCount: events.length,
-            itemBuilder: (context, index) {
-              final event = events[index];
-              return Padding(
-                padding: const EdgeInsets.only(bottom: AppSpacing.s4),
-                child: AppCard(
-                  shadow: AppCardShadow.sm,
-                  onTap: () => context.goNamed('eventDetail', pathParameters: {'eventId': event.id}),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class EventListView extends StatelessWidget {
+  final List<EventModel> events;
+
+  const EventListView({super.key, required this.events});
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    return ListView.builder(
+      padding: const EdgeInsets.all(AppSpacing.s4),
+      itemCount: events.length,
+      itemBuilder: (context, index) {
+        final event = events[index];
+        return Padding(
+          padding: const EdgeInsets.only(bottom: AppSpacing.s4),
+          child: AppCard(
+            shadow: AppCardShadow.sm,
+            onTap: () => context.goNamed('eventDetail', pathParameters: {'eventId': event.id}),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (event.imageUrl.isNotEmpty && event.imageUrl.startsWith('http'))
+                  ClipRRect(
+                    borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
+                    child: Image.network(
+                      event.imageUrl,
+                      height: 220,
+                      width: double.infinity,
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) => Container(
+                        height: 220,
+                        color: colors.border.withAlpha((0.5 * 255).toInt()),
+                        child: AppIcon(AppIconName.grid, size: 48, color: colors.textMuted),
+                      ),
+                    ),
+                  ),
+                Padding(
+                  padding: const EdgeInsets.all(AppSpacing.s4),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      if (event.imageUrl.isNotEmpty)
-                        ClipRRect(
-                          borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
-                          child: Image.network(
-                            event.imageUrl,
-                            height: 180,
-                            width: double.infinity,
-                            fit: BoxFit.cover,
-                            errorBuilder: (context, error, stackTrace) => Container(
-                              height: 180,
-                              color: colors.border.withOpacity(0.5),
-                              child: AppIcon(AppIconName.grid, size: 48, color: colors.textMuted),
-                            ),
-                          ),
-                        ),
-                      Padding(
-                        padding: const EdgeInsets.all(AppSpacing.s4),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            AppText.headingMd(event.title, color: colors.primary),
-                            const SizedBox(height: AppSpacing.s2),
-                            Row(
-                              children: [
-                                AppIcon(AppIconName.calendar, size: 14, color: colors.primary.withOpacity(0.7)),
-                                const SizedBox(width: AppSpacing.s1),
-                                AppText.bodySm(event.date.toIso8601String().split('T')[0], color: colors.primary.withOpacity(0.7)),
-                                const SizedBox(width: AppSpacing.s4),
-                                AppIcon(AppIconName.mapPin, size: 14, color: colors.primary.withOpacity(0.7)),
-                                const SizedBox(width: AppSpacing.s1),
-                                Expanded(child: AppText.bodySm(event.location, color: colors.primary.withOpacity(0.7), overflow: TextOverflow.ellipsis)),
-                              ],
-                            ),
-                          ],
-                        ),
+                      AppText.headingMd(event.title, color: colors.primary),
+                      const SizedBox(height: AppSpacing.s2),
+                      Row(
+                        children: [
+                          AppIcon(AppIconName.calendar, size: 14, color: colors.primary.withAlpha((0.7 * 255).toInt())),
+                          const SizedBox(width: AppSpacing.s1),
+                          AppText.bodySm(event.date.toIso8601String().split('T')[0], color: colors.primary.withAlpha((0.7 * 255).toInt())),
+                          const SizedBox(width: AppSpacing.s4),
+                          AppIcon(AppIconName.mapPin, size: 14, color: colors.primary.withAlpha((0.7 * 255).toInt())),
+                          const SizedBox(width: AppSpacing.s1),
+                          Expanded(child: AppText.bodySm(event.location, color: colors.primary.withAlpha((0.7 * 255).toInt()), overflow: TextOverflow.ellipsis)),
+                        ],
                       ),
                     ],
                   ),
                 ),
-              );
-            },
-          );
-        },
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (error, stack) => Center(child: AppText.bodyMd('Error: $error', color: colors.error)),
-      ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 }

@@ -46,7 +46,7 @@ class NavItem extends StatelessWidget {
             if (!collapsed) ...[
               const SizedBox(width: AppSpacing.s3),
               Expanded(
-                child: Text(
+                child: Text( 
                   label,
                   style: TextStyle(
                     color: active ? colors.primary : colors.textSecondary,

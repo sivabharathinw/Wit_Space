@@ -10,8 +10,10 @@ import '../../../src/components/app_card.dart';
 import '../../../src/components/app_icon.dart';
 import '../../../src/tokens/spacing.dart';
 import '../../../src/widgets/extensions.dart';
-import '../viewmodel/edit_event_viewmodel.dart';
-import '../viewmodel/event_detail_viewmodel.dart';
+import '../../../src/tokens/radius.dart';
+import '../viewmodel/event_viewmodel.dart';
+import '../data/model/event_model.dart';
+import 'event_ref_extensions.dart';
 
 class EditEventScreen extends ConsumerStatefulWidget {
   final String eventId;
@@ -54,35 +56,66 @@ class _EditEventScreenState extends ConsumerState<EditEventScreen> {
   }
 
   Future<void> _submit(event) async {
-    if (_formKey.currentState!.validate()) {
-      await ref.read(editEventViewModelProvider.notifier).updateEvent(
-            originalEvent: event,
-            title: _titleController.text,
-            description: _descController.text,
-            location: _locationController.text,
-            date: _selectedDate!,
-            time: _selectedTime!,
-            imageUrl: _imageUrlController.text,
+    try {
+      if (_formKey.currentState!.validate()) {
+        // Validation: Check if date and time are selected
+        if (_selectedDate == null || _selectedTime == null) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Please select Date and Time')),
           );
+          return;
+        }
 
-      final state = ref.read(editEventViewModelProvider);
-      
-      if (!mounted) return;
-      if (state.hasError) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: ${state.error}')),
+        // Validation: Check if all required fields are not empty
+        if (_titleController.text.isEmpty ||
+            _descController.text.isEmpty ||
+            _locationController.text.isEmpty) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('All fields are required')),
+          );
+          return;
+        }
+
+        final updatedEvent = event.rebuild((b) => b
+          ..title = _titleController.text
+          ..description = _descController.text
+          ..location = _locationController.text
+          ..date = _selectedDate!
+          ..time = _selectedTime!
+          ..imageUrl = _imageUrlController.text
         );
-      } else {
-        context.goNamed('eventDetail', pathParameters: {'eventId': widget.eventId});
+
+        await ref.eventNotifier.updateEvent(updatedEvent);
+
+        final state = ref.eventState;
+
+        if (!mounted) return;
+        if (state.error != null) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Error: ${state.error}')),
+          );
+        } else {
+          context.goNamed('eventDetail', pathParameters: {'eventId': widget.eventId});
+        }
       }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to update event: ${e.toString()}')),
+      );
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final eventAsync = ref.watch(eventDetailProvider(widget.eventId));
-    final updateState = ref.watch(editEventViewModelProvider);
+    final eventState = ref.eventState;
+    final event = eventState.events.where((e) => e.id == widget.eventId).firstOrNull;
     final colors = context.colors;
+
+    final bool isNotFound = event == null;
+    if (!isNotFound) {
+      _initControllers(event!);
+    }
 
     return Scaffold(
       appBar: AppBar(
@@ -90,131 +123,219 @@ class _EditEventScreenState extends ConsumerState<EditEventScreen> {
         backgroundColor: colors.bgPage,
         elevation: 0,
       ),
-      body: eventAsync.when(
-        data: (event) {
-          // TODO: check isOwner
-          const bool isOwner = true;
-          if (!isOwner) {
-            return Center(child: AppText.bodyMd('Unauthorized', color: colors.error));
-          }
+      body: eventState.isLoading && eventState.events.isEmpty
+          ? const Center(child: CircularProgressIndicator())
+          : isNotFound
+              ? Center(child: AppText.bodyMd('Event not found', color: colors.error))
+              : EditEventForm(
+                  event: event!,
+                  formKey: _formKey,
+                  titleController: _titleController,
+                  descController: _descController,
+                  locationController: _locationController,
+                  imageUrlController: _imageUrlController,
+                  selectedDate: _selectedDate!,
+                  selectedTime: _selectedTime!,
+                  onDateChanged: (date) => setState(() => _selectedDate = date),
+                  onTimeChanged: (time) => setState(() => _selectedTime = time),
+                  onSubmit: () => _submit(event),
+                  isLoading: eventState.isLoading,
+                ),
+    );
+  }
+}
 
-          _initControllers(event);
+class EditEventForm extends StatelessWidget {
+  final EventModel event;
+  final GlobalKey<FormState> formKey;
+  final TextEditingController titleController;
+  final TextEditingController descController;
+  final TextEditingController locationController;
+  final TextEditingController imageUrlController;
+  final DateTime selectedDate;
+  final TimeOfDay selectedTime;
+  final Function(DateTime) onDateChanged;
+  final Function(TimeOfDay) onTimeChanged;
+  final VoidCallback onSubmit;
+  final bool isLoading;
 
-          return SingleChildScrollView(
-            padding: const EdgeInsets.all(AppSpacing.s4),
-            child: Form(
-              key: _formKey,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  AppTextField(
-                    label: 'Event Title',
-                    hint: 'e.g. Community Hackathon',
-                    controller: _titleController,
-                    fullWidth: true,
-                    validator: (v) => v == null || v.isEmpty ? 'Title is required' : null,
-                  ),
-                  const SizedBox(height: AppSpacing.s4),
-                  AppTextarea(
-                    label: 'Description',
-                    hint: 'Tell us more about the event...',
-                    controller: _descController,
-                    fullWidth: true,
-                  ),
-                  const SizedBox(height: AppSpacing.s4),
-                  AppTextField(
-                    label: 'Location',
-                    hint: 'e.g. Conference Room A',
-                    controller: _locationController,
-                    fullWidth: true,
-                    prefixIcon: const AppIcon(AppIconName.mapPin, size: 18),
-                    validator: (v) => v == null || v.isEmpty ? 'Location is required' : null,
-                  ),
-                  const SizedBox(height: AppSpacing.s4),
-                  AppTextField(
-                    label: 'Image URL',
-                    hint: 'https://...',
-                    controller: _imageUrlController,
-                    fullWidth: true,
-                    prefixIcon: const AppIcon(AppIconName.grid, size: 18),
-                  ),
-                  const SizedBox(height: AppSpacing.s6),
-                  Row(
+  const EditEventForm({
+    super.key,
+    required this.event,
+    required this.formKey,
+    required this.titleController,
+    required this.descController,
+    required this.locationController,
+    required this.imageUrlController,
+    required this.selectedDate,
+    required this.selectedTime,
+    required this.onDateChanged,
+    required this.onTimeChanged,
+    required this.onSubmit,
+    required this.isLoading,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(AppSpacing.s4),
+      child: Form(
+        key: formKey,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            AppTextField(
+              label: 'Event Title',
+              hint: 'e.g. Community Hackathon',
+              controller: titleController,
+              fullWidth: true,
+              validator: (v) => v == null || v.isEmpty ? 'Title is required' : null,
+            ),
+            const SizedBox(height: AppSpacing.s4),
+            AppTextarea(
+              label: 'Description',
+              hint: 'Tell us more about the event...',
+              controller: descController,
+              fullWidth: true,
+            ),
+            const SizedBox(height: AppSpacing.s4),
+            AppTextField(
+              label: 'Location',
+              hint: 'e.g. Conference Room A',
+              controller: locationController,
+              fullWidth: true,
+              prefixIcon: const AppIcon(AppIconName.mapPin, size: 18),
+              validator: (v) => v == null || v.isEmpty ? 'Location is required' : null,
+            ),
+            const SizedBox(height: AppSpacing.s4),
+            AppTextField(
+              label: 'Image URL',
+              hint: 'https://...',
+              controller: imageUrlController,
+              fullWidth: true,
+              prefixIcon: const AppIcon(AppIconName.grid, size: 18),
+            ),
+            ValueListenableBuilder<TextEditingValue>(
+              valueListenable: imageUrlController,
+              builder: (context, value, _) {
+                final imageUrl = value.text;
+                if (imageUrl.isEmpty) return const SizedBox.shrink();
+
+                return Padding(
+                  padding: const EdgeInsets.only(top: AppSpacing.s4),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            AppText.label('Date', color: colors.primary),
-                            const SizedBox(height: AppSpacing.s1),
-                            AppCard(
-                              onTap: () async {
-                                final date = await showDatePicker(
-                                  context: context,
-                                  initialDate: _selectedDate!,
-                                  firstDate: DateTime.now(),
-                                  lastDate: DateTime(2030),
-                                );
-                                if (date != null) setState(() => _selectedDate = date);
-                              },
-                              border: true,
-                              padding: const EdgeInsets.all(AppSpacing.s3),
-                              child: Row(
-                                children: [
-                                  AppIcon(AppIconName.calendar, color: colors.primary),
-                                  const SizedBox(width: AppSpacing.s2),
-                                  AppText.bodySm(_selectedDate!.toIso8601String().split('T')[0], color: colors.primary),
-                                ],
+                      AppText.label('Image Preview', color: colors.primary),
+                      const SizedBox(height: AppSpacing.s2),
+                      AppCard(
+                        padding: EdgeInsets.zero,
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(AppRadius.md),
+                          child: Image.network(
+                            imageUrl,
+                            height: 200,
+                            width: double.infinity,
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) => Container(
+                              height: 200,
+                              width: double.infinity,
+                              color: colors.border.withAlpha((0.5 * 255).toInt()),
+                              child: Center(
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    AppIcon(AppIconName.grid, size: 48, color: colors.textMuted),
+                                    const SizedBox(height: AppSpacing.s2),
+                                    AppText.bodySm('Invalid Image URL', color: colors.textMuted),
+                                  ],
+                                ),
                               ),
                             ),
-                          ],
+                          ),
                         ),
                       ),
-                      const SizedBox(width: AppSpacing.s4),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
+                    ],
+                  ),
+                );
+              },
+            ),
+            const SizedBox(height: AppSpacing.s6),
+            Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      AppText.label('Date', color: colors.primary),
+                      const SizedBox(height: AppSpacing.s1),
+                      AppCard(
+                        onTap: () async {
+                          final date = await showDatePicker(
+                            context: context,
+                            initialDate: selectedDate,
+                            firstDate: DateTime.now(),
+                            lastDate: DateTime(2030),
+                          );
+                          if (date != null) onDateChanged(date);
+                        },
+                        border: true,
+                        padding: const EdgeInsets.all(AppSpacing.s3),
+                        child: Row(
                           children: [
-                            AppText.label('Time', color: colors.primary),
-                            const SizedBox(height: AppSpacing.s1),
-                            AppCard(
-                              onTap: () async {
-                                final time = await showTimePicker(
-                                  context: context,
-                                  initialTime: _selectedTime!,
-                                );
-                                if (time != null) setState(() => _selectedTime = time);
-                              },
-                              border: true,
-                              padding: const EdgeInsets.all(AppSpacing.s3),
-                              child: Row(
-                                children: [
-                                  AppIcon(AppIconName.clock, color: colors.primary),
-                                  const SizedBox(width: AppSpacing.s2),
-                                  AppText.bodySm(_selectedTime!.format(context), color: colors.primary),
-                                ],
-                              ),
-                            ),
+                            AppIcon(AppIconName.calendar, color: colors.primary),
+                            const SizedBox(width: AppSpacing.s2),
+                            AppText.bodySm(
+                                selectedDate.toIso8601String().split('T')[0],
+                                color: colors.primary),
                           ],
                         ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: AppSpacing.s8),
-                  AppButton.primary(
-                    label: 'Update Event',
-                    onPressed: updateState.isLoading ? null : () => _submit(event),
-                    loading: updateState.isLoading,
-                    fullWidth: true,
-                    size: AppButtonSize.lg,
+                ),
+                const SizedBox(width: AppSpacing.s4),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      AppText.label('Time', color: colors.primary),
+                      const SizedBox(height: AppSpacing.s1),
+                      AppCard(
+                        onTap: () async {
+                          final time = await showTimePicker(
+                            context: context,
+                            initialTime: selectedTime,
+                          );
+                          if (time != null) onTimeChanged(time);
+                        },
+                        border: true,
+                        padding: const EdgeInsets.all(AppSpacing.s3),
+                        child: Row(
+                          children: [
+                            AppIcon(AppIconName.clock, color: colors.primary),
+                            const SizedBox(width: AppSpacing.s2),
+                            AppText.bodySm(selectedTime.format(context), color: colors.primary),
+                          ],
+                        ),
+                      ),
+                    ],
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
-          );
-        },
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (error, stack) => Center(child: AppText.bodyMd('Error: $error', color: colors.error)),
+            const SizedBox(height: AppSpacing.s8),
+            AppButton.primary(
+              label: 'Update Event',
+              onPressed: isLoading ? null : onSubmit,
+              loading: isLoading,
+              fullWidth: true,
+              size: AppButtonSize.lg,
+            ),
+          ],
+        ),
       ),
     );
   }
