@@ -6,7 +6,7 @@ import '../data/model/event_model.dart';
 import '../data/model/registration_model.dart';
 import '../data/model/notification_model.dart';
 import '../data/model/event_state.dart';
-import '../data/repository/event_service.dart';
+import '../data/service/event_service_impl.dart';
 
 final eventServiceProvider = Provider<EventService>((ref) {
   return EventService(FirebaseFirestore.instance);
@@ -53,11 +53,7 @@ class EventNotifier extends StateNotifier<EventState> {
     if (_currentUserId == null) return;
     
     _notificationsSubscription = _repository.getNotificationsStream(_currentUserId!).listen(
-      (maps) {
-        final notifications = maps
-            .map((map) => NotificationModel.fromJson(map))
-            .whereType<NotificationModel>()
-            .toList();
+      (notifications) {
         _updateState(notifications: notifications);
       },
       onError: (error) {

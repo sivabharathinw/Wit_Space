@@ -6,18 +6,62 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import '../model/event_model.dart';
 import '../model/registration_model.dart';
+import '../model/notification_model.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import '/router/app_router.dart';
-
 class EventService {
   final FirebaseFirestore _firestore;
   final FlutterLocalNotificationsPlugin _localNotifications = FlutterLocalNotificationsPlugin();
   final FirebaseMessaging _messaging = FirebaseMessaging.instance;
   EventService(this._firestore);
+  //_eventsRef  returns the eventmodel coll
+  CollectionReference<EventModel> get _eventsRef =>
+  //connects to firestore  events
+      _firestore.collection('events').withConverter<EventModel>(
+
+        fromFirestore: (snapshot, _) {
+          final data = snapshot.data()!;
+          data['id'] = snapshot.id;
+          data['createdBy'] = data['createdBy'] ?? 'Unknown';
+          data['createdAt'] = (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now();
+          final rawImageUrl = data['imageUrl'] as String? ?? '';
+          data['imageUrl'] =
+          (rawImageUrl.startsWith('http') && rawImageUrl.length > 10)
+              ? rawImageUrl
+              : '';
+          data['time'] = data['time'] ?? '00:00';
+          return EventModel.fromJson(data)!;
+        },
+        toFirestore: (event, _) => event.toJson(),
+      );
+
+  CollectionReference<Map<String, dynamic>> get _usersCollection => _firestore.collection('users');
+
+  CollectionReference<NotificationModel> get _notificationsRef =>
+      _firestore.collection('notifications').withConverter<NotificationModel>(
+        fromFirestore: (snapshot, _) {
+          final data = snapshot.data()!;
+          data['id'] = snapshot.id;
+          data['createdAt'] = (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now();
+          return NotificationModel.fromJson(data)!;
+        },
+        toFirestore: (notification, _) => notification.toJson(),
+      );
+
+
+  CollectionReference<RegistrationModel> _registrationsRef(String eventId) =>
+      _firestore.collection('events').doc(eventId).collection('registrations').withConverter<RegistrationModel>(
+        fromFirestore: (snapshot, _) {
+          final data = snapshot.data()!;
+          data['id'] = snapshot.id;
+          data['registeredAt'] = (data['registeredAt'] as Timestamp?)?.toDate() ?? DateTime.now();
+          return RegistrationModel.fromJson(data)!;
+        },
+        toFirestore: (registration, _) => registration.toJson(),
+      );
 
   // initialize notification service
   Future<void> init() async {
-    // request permission from user
     await saveDeviceToken('temp_user_id');
     await _requestPermission();
     await _initLocalNotification();
@@ -46,19 +90,17 @@ class EventService {
   Future<void> saveDeviceToken(String userId) async {
     final token = await _messaging.getToken();
     if (token != null) {
-      await _firestore.collection('users').doc(userId).set({
+      await _usersCollection.doc(userId).set({
         'fcmToken': token,
       }, SetOptions(merge: true));
     }
   }
-
   Future<void> _initLocalNotification() async {
     const androidSettings = AndroidInitializationSettings('@mipmap/ic_launcher');
     const initSettings = InitializationSettings(android: androidSettings);
     await _localNotifications.initialize(
       settings: initSettings,
       onDidReceiveNotificationResponse: (NotificationResponse response) {
-
         final payload = response.payload;
         if (payload != null) {
           final data = jsonDecode(payload) as Map<String, dynamic>;
@@ -103,47 +145,23 @@ class EventService {
 
   // read all events
   Stream<List<EventModel>> getEventsStream() {
-    return _firestore
-        .collection('events')
+    //eventsRef is a collection ref to event
+    return _eventsRef
         .orderBy('date')
         .snapshots()
-        .map((snapshot) {
-      return snapshot.docs.map((doc) {
-        final data = doc.data();
-        data['id'] = doc.id;
-        data['createdBy'] = data['createdBy'] ?? 'Unknown';
-        data['createdAt'] = data['createdAt'] ?? DateTime.now();
-        final rawImageUrl = data['imageUrl'] as String? ?? '';
-        data['imageUrl'] =
-        (rawImageUrl.startsWith('http') && rawImageUrl.length > 10)
-            ? rawImageUrl
-            : '';
-        data['time'] = data['time'] ?? '00:00';
-        return EventModel.fromJson(data);
-      }).whereType<EventModel>().toList();
-    });
+        .map((snapshot) => snapshot.docs.map((doc) => doc.data()).toList());
   }
 
-  // read single event
+  // read single event 
   Stream<EventModel> getEventStream(String eventId) {
-    return _firestore.collection('events').doc(eventId).snapshots().map((doc) {
+    return _eventsRef.doc(eventId).snapshots().map((doc) {
       if (!doc.exists) throw Exception('Event not found');
-      final data = doc.data()!;
-      data['id'] = doc.id;
-      data['createdBy'] = data['createdBy'] ?? 'Unknown';
-      data['createdAt'] = data['createdAt'] ?? DateTime.now();
-      final rawImageUrl = data['imageUrl'] as String? ?? '';
-      data['imageUrl'] =
-      (rawImageUrl.startsWith('http') && rawImageUrl.length > 10)
-          ? rawImageUrl
-          : '';
-      data['time'] = data['time'] ?? '00:00';
-      return EventModel.fromJson(data)!;
+      return doc.data()!;
     });
   }
 
   Future<void> createEvent(EventModel event) async {
-    final docRef = await _firestore.collection('events').add(event.toJson());
+    final docRef = await _eventsRef.add(event);
     await docRef.update({'id': docRef.id});
     await _sendPushNotificationToAllUsers(
       title: 'New Event: ${event.title}',
@@ -164,10 +182,10 @@ class EventService {
 
   Future<void> _sendPushNotificationToAllUsers({required String title, required String body, String? eventId}) async {
     try {
-      final snapshot = await _firestore.collection('users').where('fcmToken', isNotEqualTo: null).get();
+      final snapshot = await _usersCollection.where('fcmToken', isNotEqualTo: null).get();
       final tokens = snapshot.docs
           .map((doc) => doc.data()['fcmToken'] as String?)
-          .where((t) => t != null && t.isNotEmpty)
+          .where((t) => t != null && t!.isNotEmpty)
           .cast<String>()
           .toList();
 
@@ -210,90 +228,69 @@ class EventService {
     }
   }
 
-
   Future<void> updateEvent(EventModel event) async {
-    final data = event.toJson();
-    await _firestore.collection('events').doc(event.id).update(data);
+    await _eventsRef.doc(event.id).set(event, SetOptions(merge: true));
   }
 
   // delete event
   Future<void> deleteEvent(String eventId) async {
-    await _firestore.collection('events').doc(eventId).delete();
+    await _eventsRef.doc(eventId).delete();
   }
 
   // register for event
   Future<String> registerForEvent(RegistrationModel registration) async {
-    final docRef = _firestore
-        .collection('events')
-        .doc(registration.eventId)
-        .collection('registrations')
-        .doc();
-    
+    final docRef = _registrationsRef(registration.eventId).doc();
     final updatedRegistration = registration.rebuild((b) => b..id = docRef.id);
-    final data = updatedRegistration.toJson();
-    
-    await docRef.set(data);
+    await docRef.set(updatedRegistration);
     return docRef.id;
   }
 
   // check if user is registered for an event
   Future<RegistrationModel?> getUserRegistrationForEvent(
       String eventId, String userId) async {
-    final snapshot = await _firestore
-        .collection('events')
-        .doc(eventId)
-        .collection('registrations')
+    final snapshot = await _registrationsRef(eventId)
         .where('userId', isEqualTo: userId)
         .limit(1)
         .get();
 
     if (snapshot.docs.isEmpty) return null;
-    final doc = snapshot.docs.first;
-    final data = doc.data();
-    data['id'] = doc.id;
-    return RegistrationModel.fromJson(data);
+    return snapshot.docs.first.data();
   }
 
   // get user registrations stream
   Stream<List<RegistrationModel>> getUserRegistrationsStream(String userId) {
     return _firestore
         .collectionGroup('registrations')
+        .withConverter<RegistrationModel>(
+          fromFirestore: (snapshot, _) {
+            final data = snapshot.data()!;
+            data['id'] = snapshot.id;
+            data['registeredAt'] = (data['registeredAt'] as Timestamp?)?.toDate() ?? DateTime.now();
+            return RegistrationModel.fromJson(data)!;
+          },
+          toFirestore: (registration, _) => registration.toJson(),
+        )
         .where('userId', isEqualTo: userId)
         .snapshots()
-        .map((snapshot) {
-      return snapshot.docs.map((doc) {
-        final data = doc.data();
-        data['id'] = doc.id;
-        return RegistrationModel.fromJson(data);
-      }).whereType<RegistrationModel>().toList();
-    });
+        .map((snapshot) => snapshot.docs.map((doc) => doc.data()).toList());
   }
 
   // get notifications stream
-  Stream<List<Map<String, dynamic>>> getNotificationsStream(String userId) {
-    return _firestore
-        .collection('notifications')
+  Stream<List<NotificationModel>> getNotificationsStream(String userId) {
+    return _notificationsRef
         .where('receiverId', isEqualTo: userId)
         .snapshots()
-        .map((snapshot) {
-      return snapshot.docs.map((doc) {
-        final data = doc.data();
-        data['id'] = doc.id;
-        data['createdAt'] = data['createdAt'] ?? DateTime.now();
-        return data;
-      }).toList();
-    });
+        .map((snapshot) => snapshot.docs.map((doc) => doc.data()).toList());
   }
 
   Future<void> markAsRead(String notificationId) async {
-    await _firestore.collection('notifications').doc(notificationId).update({
+    await _notificationsRef.doc(notificationId).update({
       'hasSeen': true,
     });
   }
 
   Future<void> markAllAsRead(String userId) async {
-    final snapshot = await _firestore
-        .collection('notifications')
+    final snapshot = await _notificationsRef
         .where('receiverId', isEqualTo: userId)
         .where('hasSeen', isEqualTo: false)
         .get();
@@ -306,18 +303,17 @@ class EventService {
   }
 
   Future<void> deleteNotification(String notificationId) async {
-    await _firestore.collection('notifications').doc(notificationId).delete();
+    await _notificationsRef.doc(notificationId).delete();
   }
 
   Future<void> updateNotification(String notificationId) async {
-    await _firestore.collection('notifications').doc(notificationId).update({
+    await _notificationsRef.doc(notificationId).update({
       'hasSeen': true,
     });
   }
 
   Future<void> deleteAllNotifications(String userId) async {
-    final snapshot = await _firestore
-        .collection('notifications')
+    final snapshot = await _notificationsRef
         .where('receiverId', isEqualTo: userId)
         .get();
 
@@ -334,15 +330,15 @@ class EventService {
     required String title,
     required String message,
   }) async {
-    final docRef = _firestore.collection('notifications').doc();
-    await docRef.set({
-      'id': docRef.id,
-      'senderId': senderId,
-      'receiverId': receiverId,
-      'title': title,
-      'message': message,
-      'hasSeen': false,
-      'createdAt': FieldValue.serverTimestamp(),
-    });
+    final docRef = _notificationsRef.doc();
+    final notification = NotificationModel((b) => b
+      ..id = docRef.id
+      ..senderId = senderId
+      ..receiverId = receiverId
+      ..title = title
+      ..message = message
+      ..hasSeen = false
+      ..createdAt = DateTime.now());
+    await docRef.set(notification);
   }
 }
