@@ -39,9 +39,7 @@ class _NotificationScreenState extends ConsumerState<NotificationScreen> {
               ),
               TextButton(
                 onPressed: () {
-                  ref
-                      .read(eventNotifierProvider.notifier)
-                      .deleteAllNotifications();
+                  ref.read(eventNotifierProvider.notifier).deleteAllNotifications();
                   Navigator.pop(context);
                 },
                 child: const Text(
@@ -66,8 +64,10 @@ class _NotificationScreenState extends ConsumerState<NotificationScreen> {
         actions: [
           if (state.notifications.any((n) => !n.hasSeen))
             TextButton.icon(
-              onPressed: () =>
-                  ref.read(eventNotifierProvider.notifier).markAllAsRead(),
+              onPressed: () {
+                final notifier = ref.read(eventNotifierProvider.notifier);
+                notifier.markAllAsRead();
+              },
               icon: AppIcon(AppIconName.check, color: colors.primary, size: 18),
               label: AppText.label('Mark all as read', color: colors.primary),
             ),
@@ -94,8 +94,7 @@ class _NotificationScreenState extends ConsumerState<NotificationScreen> {
             notification: notification,
             onOpen: () {
               if (!notification.hasSeen) {
-                ref.read(eventNotifierProvider.notifier).markAsRead(
-                    notification.id);
+                ref.read(eventNotifierProvider.notifier).markAsRead(notification.id);
               }
               context.pushNamed(
                 'notificationDetails',
