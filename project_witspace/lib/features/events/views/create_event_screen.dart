@@ -13,6 +13,8 @@ import '../../../src/tokens/radius.dart';
 import '../data/model/event_model.dart';
 import 'event_ref_extensions.dart';
 
+
+
 class CreateEventScreen extends ConsumerStatefulWidget {
   const CreateEventScreen({super.key});
 
@@ -71,6 +73,7 @@ class _CreateEventScreenState extends ConsumerState<CreateEventScreen> {
           ..createdBy = 'mockUser123'
           ..createdAt = DateTime.now()
         );
+
 
         await ref.eventNotifier.createEvent(newEvent);
 

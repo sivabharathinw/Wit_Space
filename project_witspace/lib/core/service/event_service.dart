@@ -1,7 +1,7 @@
-
-import 'package:project_witspace/features/events/data/model/event_model.dart';
-import 'package:project_witspace/features/events/data/model/registration_model.dart';
-
+import 'package:project_witspace/features/events/data/model/notification_model.dart';
+import '../../features/events/data/model/notification_model.dart';
+import '../../features/events/data/model/event_model.dart';
+import '../../features/events/data/model/registration_model.dart';
 abstract class EventServiceAbstract{
   Future<void> init();
   Future<void> saveDeviceToken(String userId);
@@ -24,7 +24,7 @@ abstract class EventServiceAbstract{
       );
   Stream<List<RegistrationModel>> getUserRegistrationsStream(String userId);
   // notifications
-  Stream<List<Map<String, dynamic>>> getNotificationsStream(String userId);
+  Stream<List<NotificationModel>> getNotificationsStream(String userId);
   Future<void> addNotification({
     required String senderId,
     required String receiverId,

@@ -6,21 +6,17 @@ import '../data/model/event_model.dart';
 import '../data/model/registration_model.dart';
 import '../data/model/notification_model.dart';
 import '../data/model/event_state.dart';
-import '../data/service/event_service_impl.dart';
+import '../data/repository/event_repository.dart';
+import '../data/factory/notification_factory.dart';
 
-final eventServiceProvider = Provider<EventService>((ref) {
-  return EventService(FirebaseFirestore.instance);
-});
+//create provider and notifier for single app it have 2 types notifier contains logic to handle the data and state have all the data
 
 final eventNotifierProvider = StateNotifierProvider<EventNotifier, EventState>((ref) {
-  final repository = ref.watch(eventServiceProvider);
-  return EventNotifier(repository);
-});
-
-
+    final repository = EventRepository();
+    return EventNotifier(repository);
+  });
 class EventNotifier extends StateNotifier<EventState> {
-  final EventService _repository;
-
+  final EventRepository _repository;
   StreamSubscription? _eventsSubscription;
   StreamSubscription? _notificationsSubscription;
   String? _currentUserId;
@@ -29,8 +25,8 @@ class EventNotifier extends StateNotifier<EventState> {
     _init();
   }
 
-  void _init() {
-    _repository.init(); // call the inti method in service  to set up the notification
+  Future<void> _init() async {
+    await _repository.firestoreService.init();
     _loadEvents();
     setUserId('temp_user_id');
   }
@@ -38,7 +34,9 @@ class EventNotifier extends StateNotifier<EventState> {
   void _loadEvents() {
     //if eventsub is not null cancel it.means if already listening to events then cancel it.
     _eventsSubscription?.cancel();
-    _eventsSubscription = _repository.getEventsStream().listen((events) {
+    //listen to  events stream and upadate when state  is  chng
+    _eventsSubscription = _repository.firestoreService.getEventsStream().listen((events) {
+
       _updateState(events: events);
     });
   }
@@ -51,8 +49,8 @@ class EventNotifier extends StateNotifier<EventState> {
 
   void _loadNotifications() {
     if (_currentUserId == null) return;
-    
-    _notificationsSubscription = _repository.getNotificationsStream(_currentUserId!).listen(
+
+    _notificationsSubscription = _repository.firestoreService.getNotificationsStream(_currentUserId!).listen(
       (notifications) {
         _updateState(notifications: notifications);
       },
@@ -82,50 +80,65 @@ class EventNotifier extends StateNotifier<EventState> {
 
   Future<void> createEvent(EventModel event) async {
     _updateState(isLoading: true, error: null);
-    await _repository.createEvent(event);
+
+   await _repository.firestoreService.createEvent(event);
+
     if (_currentUserId != null) {
-      await _repository.addNotification(
-        senderId: 'system',
+      final notification = NotificationFactory.create(
+        type: NotificationType.eventCreated,
         receiverId: _currentUserId!,
-        title: 'New Event Created',
-        message: 'Your event "${event.title}" has been successfully created.',
+        data: {'eventTitle': event.title},
       );
 
-
+      await _repository.firestoreService.addNotification(
+        senderId: notification.senderId,
+        receiverId: notification.receiverId,
+        title: notification.title,
+        message: notification.message,
+      );
     }
     _updateState(isLoading: false);
   }
 
   Future<void> updateEvent(EventModel event) async {
     _updateState(isLoading: true, error: null);
-    await _repository.updateEvent(event);
+    await _repository.firestoreService.updateEvent(event);
     _updateState(isLoading: false);
   }
 
   Future<void> deleteEvent(String eventId) async {
     _updateState(isLoading: true, error: null);
-    await _repository.deleteEvent(eventId);
+    await _repository.firestoreService.deleteEvent(eventId);
     _updateState(isLoading: false);
   }
 
   Future<void> register(RegistrationModel registration) async {
     _updateState(isLoading: true, error: null, registrationId: null);
-    final id = await _repository.registerForEvent(registration);//this method returns the registration id
+
+    await _repository.firestoreService.registerForEvent(registration);
+
     if (_currentUserId != null) {
-      await _repository.addNotification(
-        senderId: 'system',
+
+      final notification = NotificationFactory.create(
+        type: NotificationType.registrationSuccessful,
         receiverId: _currentUserId!,
-        title: 'Registration Successful',
-        message: 'You have been registered for the event.',
+        data: {},
+      );
+
+      await _repository.firestoreService.addNotification(
+        senderId: notification.senderId,
+        receiverId: notification.receiverId,
+        title: notification.title,
+        message: notification.message,
       );
     }
-    _updateState(isLoading: false, registrationId: id, isRegistered: true);
+    _updateState(isLoading: false, registrationId: registration.id, isRegistered: true);
   }
 
   Future<void> checkRegistrationStatus(String eventId) async {
     if (_currentUserId == null) return;
     _updateState(isRegistered: false); // Reset before checking
-    final registration = await _repository.getUserRegistrationForEvent(eventId, _currentUserId!);
+    final registration = await _repository.firestoreService.getUserRegistrationForEvent(eventId, _currentUserId!);
     //if user registerd already it returns the registration else null
 //with this we upadate teh isregisterd is tru or fls
     _updateState(isRegistered: registration != null);
@@ -136,29 +149,29 @@ class EventNotifier extends StateNotifier<EventState> {
   }
 
   Future<void> markAsRead(String notificationId) async {
-    await _repository.markAsRead(notificationId);
+    await _repository.firestoreService.markAsRead(notificationId);
   }
 
   Future<void> markAllAsRead() async {
     if (_currentUserId == null) return;
-    await _repository.markAllAsRead(_currentUserId!);
+    await _repository.firestoreService.markAllAsRead(_currentUserId!);
   }
 
   Future<void> deleteNotification(String notificationId) async {
-    await _repository.deleteNotification(notificationId);
+    await _repository.firestoreService.deleteNotification(notificationId);
   }
 
   Future<void> updateNotification(NotificationModel notification) async {
-    await _repository.updateNotification(notification.id);
+    await _repository.firestoreService.updateNotification(notification.id);
   }
 
   Future<void> deleteAllNotifications() async {
     if (_currentUserId == null) return;
-    await _repository.deleteAllNotifications(_currentUserId!);
+    await _repository.firestoreService.deleteAllNotifications(_currentUserId!);
   }
 
   @override
-  void dispose() {
+  void dispose(){
     _eventsSubscription?.cancel();
     _notificationsSubscription?.cancel();
     super.dispose();

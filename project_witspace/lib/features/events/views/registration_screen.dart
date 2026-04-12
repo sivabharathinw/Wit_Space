@@ -9,8 +9,8 @@ import '../../../src/components/app_card.dart';
 import '../../../src/components/app_icon.dart';
 import '../../../src/tokens/spacing.dart';
 import '../../../src/widgets/extensions.dart';
-import '../viewmodel/event_viewmodel.dart';
 import '../data/model/registration_model.dart';
+import '../viewmodel/event_viewmodel.dart';
 import 'event_ref_extensions.dart';
 
 class RegistrationScreen extends ConsumerStatefulWidget {

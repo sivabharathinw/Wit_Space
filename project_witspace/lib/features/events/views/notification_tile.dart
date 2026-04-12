@@ -2,11 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../data/model/notification_model.dart';
 import '../viewmodel/event_viewmodel.dart';
-import '../../../src/components/app_text.dart';
 import '../../../src/components/app_card.dart';
 import '../../../src/components/app_icon.dart';
 import '../../../src/components/app_button.dart';
 import '../../../src/tokens/spacing.dart';
+import '../../../src/components/app_text.dart';
 import '../../../src/widgets/extensions.dart';
 
 class NotificationTile extends ConsumerWidget {
@@ -67,9 +67,12 @@ class NotificationTile extends ConsumerWidget {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Expanded(
-                      child: AppText.headingMd(
+                      child: Text(
                         notification.title,
-                        color: notification.hasSeen ? colors.textSecondary : colors.textPrimary,
+                        style: TextStyle(
+                          color: notification.hasSeen ? colors.textSecondary : colors.textPrimary,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                     ),
                     AppText.labelSm(
@@ -84,9 +87,9 @@ class NotificationTile extends ConsumerWidget {
                   ],
                 ),
                 const SizedBox(height: AppSpacing.s1),
-                AppText.bodySm(
+                Text(
                   notification.message,
-                  color: colors.textSecondary,
+                  style: TextStyle(color: colors.textSecondary),
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                 ),

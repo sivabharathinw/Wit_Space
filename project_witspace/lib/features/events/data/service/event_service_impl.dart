@@ -1,21 +1,24 @@
 import 'dart:convert';
-import 'package:http/http.dart' as http;
-import 'package:googleapis_auth/auth_io.dart' as auth;
-import 'package:flutter/services.dart' show rootBundle;
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import '../model/event_model.dart';
 import '../model/registration_model.dart';
 import '../model/notification_model.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
-import '/router/app_router.dart';
-class EventService {
-  final FirebaseFirestore _firestore;
+import 'package:project_witspace/core/service/event_service.dart';
+import '../strategy/fcm_strategy.dart';
+import '../strategy/local_strategy.dart';
+import 'package:project_witspace/router/app_router.dart';
+
+class EventService implements EventServiceAbstract {
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FlutterLocalNotificationsPlugin _localNotifications = FlutterLocalNotificationsPlugin();
   final FirebaseMessaging _messaging = FirebaseMessaging.instance;
-  EventService(this._firestore);
+
+  EventService();
   //_eventsRef  returns the eventmodel coll
-  CollectionReference<EventModel> get _eventsRef =>
+  CollectionReference<EventModel> get _eventsRef=>
   //connects to firestore  events
       _firestore.collection('events').withConverter<EventModel>(
 
@@ -86,7 +89,6 @@ class EventService {
       }
     });
   }
-
   Future<void> saveDeviceToken(String userId) async {
     final token = await _messaging.getToken();
     if (token != null) {
@@ -126,20 +128,11 @@ class EventService {
   }
 
   Future<void> showLocalNotification({required String title, required String body, String? payload}) async {
-    const androidDetails = AndroidNotificationDetails(
-      'channel_id',
-      'channel_name',
-      importance: Importance.max,
-      priority: Priority.high,
-      showWhen: true,
-    );
-    const notificationDetails = NotificationDetails(android: androidDetails);
-    await _localNotifications.show(
-      id: 0,
+    final strategy = LocalNotificationStrategy(_localNotifications);
+    await strategy.notify(
       title: title,
       body: body,
-      notificationDetails: notificationDetails,
-      payload: payload,
+      data: payload != null ? jsonDecode(payload) : null,
     );
   }
 
@@ -170,61 +163,27 @@ class EventService {
     );
   }
 
-  Future<String> _getAccessToken() async {
-    final jsonString = await rootBundle.loadString('assets/service_account.json');
-    final accountCredentials = auth.ServiceAccountCredentials.fromJson(jsonString);
-    final scopes = ['https://www.googleapis.com/auth/firebase.messaging'];
-    final client = await auth.clientViaServiceAccount(accountCredentials, scopes);
-    final accessToken = client.credentials.accessToken.data;
-    client.close();
-    return accessToken;
-  }
-
   Future<void> _sendPushNotificationToAllUsers({required String title, required String body, String? eventId}) async {
     try {
       final snapshot = await _usersCollection.where('fcmToken', isNotEqualTo: null).get();
       final tokens = snapshot.docs
-          .map((doc) => doc.data()['fcmToken'] as String?)
+          .map((doc) => (doc.data() as Map<String, dynamic>)['fcmToken'] as String?)
           .where((t) => t != null && t!.isNotEmpty)
           .cast<String>()
           .toList();
 
       if (tokens.isEmpty) return;
 
-      const String projectId = 'wit-space';
-      final String endpoint = 'https://fcm.googleapis.com/v1/projects/$projectId/messages:send';
-      final String accessToken = await _getAccessToken();
-
-      for (String token in tokens) {
-        await http.post(
-          Uri.parse(endpoint),
-          headers: <String, String>{
-            'Content-Type': 'application/json',
-            'Authorization': 'Bearer $accessToken',
-          },
-          body: jsonEncode(
-            <String, dynamic>{
-              'message': <String, dynamic>{
-                'token': token,
-                'notification': <String, dynamic>{
-                  'title': title,
-                  'body': body,
-                },
-                'data': {
-                  'route': eventId != null ? '/events/$eventId' : '/events',
-                },
-                'android': <String, dynamic>{
-                  'notification': <String, dynamic>{
-                    'click_action': 'FLUTTER_NOTIFICATION_CLICK',
-                  },
-                },
-              },
-            },
-          ),
-        );
-      }
+      final strategy = FcmNotificationStrategy(tokens);
+      await strategy.notify(
+        title: title,
+        body: body,
+        data: {
+          'route': eventId != null ? '/events/$eventId' : '/events',
+        },
+      );
     } catch (e) {
-      print('Error sending push notification (HTTP v1): $e');
+      print('Error sending push notification via strategy: $e');
     }
   }
 
@@ -323,7 +282,6 @@ class EventService {
     }
     await batch.commit();
   }
-
   Future<void> addNotification({
     required String senderId,
     required String receiverId,
@@ -337,8 +295,9 @@ class EventService {
       ..receiverId = receiverId
       ..title = title
       ..message = message
+      ..createdAt = DateTime.now()
       ..hasSeen = false
-      ..createdAt = DateTime.now());
+    );
     await docRef.set(notification);
   }
 }

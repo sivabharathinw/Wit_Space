@@ -37,7 +37,7 @@ class _EventDetailScreenState extends ConsumerState<EventDetailScreen> {
     
     final bool isNotFound = event == null;
     
-    // Ownership check (Mocked for now)
+    //for edit and delete check the owner of the event
     const bool isOwner = true;
 
     return Scaffold(
