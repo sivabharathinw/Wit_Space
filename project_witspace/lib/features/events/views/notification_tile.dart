@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:project_witspace/features/events/views/event_ref_extensions.dart';
 import '../data/model/notification_model.dart';
 import '../viewmodel/event_viewmodel.dart';
 import '../../../src/components/app_card.dart';
@@ -80,7 +81,7 @@ class NotificationTile extends ConsumerWidget {
                       color: colors.textMuted,
                     ),
                     IconButton(
-                      onPressed: () => ref.read(eventNotifierProvider.notifier).deleteNotification(notification.id),
+                      onPressed: () => ref.eventNotifier.deleteNotification(notification.id),
                       icon: AppIcon(AppIconName.trash, color: colors.error, size: 18),
                       tooltip: 'Delete',
                     ),
@@ -106,7 +107,7 @@ class NotificationTile extends ConsumerWidget {
                       const SizedBox(width: AppSpacing.s2),
                       AppButton.ghost(
                         label: 'Mark as read',
-                        onPressed: () => ref.read(eventNotifierProvider.notifier).markAsRead(notification.id),
+                        onPressed: () => ref.eventNotifier.markAsRead(notification.id),
                         size: AppButtonSize.sm,
                         leading: AppIcon(AppIconName.check, size: 14, color: colors.success),
                       ),

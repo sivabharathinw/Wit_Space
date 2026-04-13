@@ -6,3 +6,4 @@ extension EventRefExtensions on WidgetRef {
   EventState get eventState => watch(eventNotifierProvider);
   EventNotifier get eventNotifier => read(eventNotifierProvider.notifier);
 }
+

@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:built_collection/built_collection.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import '../data/model/event_model.dart';
 import '../data/model/registration_model.dart';
 import '../data/model/notification_model.dart';
@@ -49,7 +48,6 @@ class EventNotifier extends StateNotifier<EventState> {
 
   void _loadNotifications() {
     if (_currentUserId == null) return;
-
     _notificationsSubscription = _repository.firestoreService.getNotificationsStream(_currentUserId!).listen(
       (notifications) {
         _updateState(notifications: notifications);
@@ -80,16 +78,13 @@ class EventNotifier extends StateNotifier<EventState> {
 
   Future<void> createEvent(EventModel event) async {
     _updateState(isLoading: true, error: null);
-
    await _repository.firestoreService.createEvent(event);
-
     if (_currentUserId != null) {
       final notification = NotificationFactory.create(
         type: NotificationType.eventCreated,
         receiverId: _currentUserId!,
         data: {'eventTitle': event.title},
       );
-
       await _repository.firestoreService.addNotification(
         senderId: notification.senderId,
         receiverId: notification.receiverId,
@@ -114,11 +109,8 @@ class EventNotifier extends StateNotifier<EventState> {
 
   Future<void> register(RegistrationModel registration) async {
     _updateState(isLoading: true, error: null, registrationId: null);
-
     await _repository.firestoreService.registerForEvent(registration);
-
     if (_currentUserId != null) {
-
       final notification = NotificationFactory.create(
         type: NotificationType.registrationSuccessful,
         receiverId: _currentUserId!,
@@ -140,7 +132,7 @@ class EventNotifier extends StateNotifier<EventState> {
     _updateState(isRegistered: false); // Reset before checking
     final registration = await _repository.firestoreService.getUserRegistrationForEvent(eventId, _currentUserId!);
     //if user registerd already it returns the registration else null
-//with this we upadate teh isregisterd is tru or fls
+    //with this we upadate teh isregisterd is tru or fls
     _updateState(isRegistered: registration != null);
   }
 //void resetStatus is used to reset the isregistered to false

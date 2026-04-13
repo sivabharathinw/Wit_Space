@@ -1,13 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../data/model/notification_model.dart';
-import '../viewmodel/event_viewmodel.dart';
 import '../../../src/components/app_text.dart';
 import '../../../src/components/app_card.dart';
 import '../../../src/components/app_icon.dart';
 import '../../../src/tokens/spacing.dart';
+import 'event_ref_extensions.dart';
 import '../../../src/widgets/extensions.dart';
-
 class NotificationDetailsScreen extends ConsumerStatefulWidget {
   final NotificationModel notification;
 
@@ -27,7 +26,7 @@ class _NotificationDetailsScreenState extends ConsumerState<NotificationDetailsS
     // Automatically mark as read when the details are opened
     if (!widget.notification.hasSeen) {
       Future.microtask(() {
-        ref.read(eventNotifierProvider.notifier).markAsRead(widget.notification.id);
+        ref.eventNotifier.markAsRead(widget.notification.id);
       });
     }
   }

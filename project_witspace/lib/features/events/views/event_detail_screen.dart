@@ -10,7 +10,7 @@ import '../../../src/tokens/spacing.dart';
 import '../viewmodel/event_viewmodel.dart';
 import '../data/model/event_model.dart';
 import '../../../src/widgets/extensions.dart';
-
+import 'event_ref_extensions.dart';
 class EventDetailScreen extends ConsumerStatefulWidget {
   final String eventId;
 
@@ -25,13 +25,13 @@ class _EventDetailScreenState extends ConsumerState<EventDetailScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      ref.read(eventNotifierProvider.notifier).checkRegistrationStatus(widget.eventId);
+      ref.eventNotifier.checkRegistrationStatus(widget.eventId);
     });
   }
 
   @override
   Widget build(BuildContext context) {
-    final eventState = ref.watch(eventNotifierProvider);
+    final eventState = ref.eventState;
     final event = eventState.events.where((e) => e.id == widget.eventId).firstOrNull;
     final colors = context.colors;
     
@@ -70,7 +70,7 @@ class _EventDetailScreenState extends ConsumerState<EventDetailScreen> {
                 );
 
                 if (confirm == true) {
-                  await ref.read(eventNotifierProvider.notifier).deleteEvent(widget.eventId);
+                  await ref.eventNotifier.deleteEvent(widget.eventId);
                   if (context.mounted) {
                     context.goNamed('eventList');
                   }

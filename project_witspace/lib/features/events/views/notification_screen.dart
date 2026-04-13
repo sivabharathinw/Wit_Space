@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:project_witspace/features/events/views/event_ref_extensions.dart';
 import '../viewmodel/event_viewmodel.dart';
 import 'notification_tile.dart';
 import '../../../src/components/app_text.dart';
-import '../../../src/components/app_button.dart';
 import '../../../src/components/app_icon.dart';
 import '../../../src/tokens/spacing.dart';
 import '../../../src/widgets/extensions.dart';
@@ -21,7 +21,7 @@ class _NotificationScreenState extends ConsumerState<NotificationScreen> {
   void initState() {
     super.initState();
     Future.microtask(() {
-      ref.read(eventNotifierProvider.notifier).setUserId('temp_user_id');
+      ref.eventNotifier.setUserId('temp_user_id');
     });
   }
 
@@ -65,7 +65,7 @@ class _NotificationScreenState extends ConsumerState<NotificationScreen> {
           if (state.notifications.any((n) => !n.hasSeen))
             TextButton.icon(
               onPressed: () {
-                final notifier = ref.read(eventNotifierProvider.notifier);
+                final notifier = ref.eventNotifier;
                 notifier.markAllAsRead();
               },
               icon: AppIcon(AppIconName.check, color: colors.primary, size: 18),
@@ -94,7 +94,7 @@ class _NotificationScreenState extends ConsumerState<NotificationScreen> {
             notification: notification,
             onOpen: () {
               if (!notification.hasSeen) {
-                ref.read(eventNotifierProvider.notifier).markAsRead(notification.id);
+                ref.eventNotifier.markAsRead(notification.id);
               }
               context.pushNamed(
                 'notificationDetails',
